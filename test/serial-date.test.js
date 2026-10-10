@@ -20,7 +20,25 @@ const {
     monthCodeToShortString,
     monthCodeToQuarter,
     lastDayOfMonth,
+    calcOrdinal,
+    ordinalToYear,
+    ordinalToMonth,
+    ordinalToDayOfMonth,
+    addDays,
+    addMonths,
+    addYears,
+    ordinalToWeekday,
+    getPreviousDayOfWeek,
+    getFollowingDayOfWeek,
+    getNearestDayOfWeek,
+    getEndOfCurrentMonth,
+    weekInMonthToString,
+    relativeToString,
+    createInstance,
+    RELATIVE,
 } = require('../src/serial-date')
+
+const d = calcOrdinal
 
 const assertEquals = (a, b) => expect(a).toBe(b)
 const assertTrue = (a) => expect(a).toBe(true)
@@ -82,11 +100,7 @@ test('testset monthCodeToQuarter', () => {
     assertEquals(monthCodeToQuarter(MONTHS.NOVEMBER), 4);
     assertEquals(monthCodeToQuarter(MONTHS.DECEMBER), 4);
 
-    try {
-        monthCodeToQuarter(-1);
-        fail("Invalid Month Code should throw exception");
-    } catch (e) {
-    }
+    expect(() => monthCodeToQuarter(-1)).toThrow();
 })
 
 test('testset monthCodeToString', () => {
@@ -102,11 +116,7 @@ test('testset monthCodeToString', () => {
     assertEquals("October", monthCodeToString(MONTHS.OCTOBER));
     assertEquals("November", monthCodeToString(MONTHS.NOVEMBER));
     assertEquals("December", monthCodeToString(MONTHS.DECEMBER));
-    try {
-        monthCodeToString(-1);
-        fail("Invalid month code should throw exception");
-    } catch (e) {
-    }
+    expect(() => monthCodeToString(-1)).toThrow();
 })
 
 test('testset monthCodeToShortString', () => {
@@ -123,12 +133,7 @@ test('testset monthCodeToShortString', () => {
     assertEquals("Nov", monthCodeToShortString(MONTHS.NOVEMBER));
     assertEquals("Dec", monthCodeToShortString(MONTHS.DECEMBER));
 
-    try {
-        monthCodeToString(-1);
-        fail("Invalid month code should throw exception");
-    } catch (e) {
-    }
-
+    expect(() => monthCodeToShortString(-1)).toThrow();
 })
 
 test('testset isValidWeekInMonthCode', () => {
@@ -188,7 +193,28 @@ test('testset lastDayOfMonth', () => {
     assertEquals(29, lastDayOfMonth(MONTHS.FEBRUARY, 1904));
 })
 
-xtest('testset addDays', () => {
+test('testset lastDayOfMonth in leap year only changes february', () => {
+    assertEquals(31, lastDayOfMonth(MONTHS.JANUARY, 1904));
+    assertEquals(31, lastDayOfMonth(MONTHS.MARCH, 1904));
+    assertEquals(30, lastDayOfMonth(MONTHS.APRIL, 1904));
+    assertEquals(31, lastDayOfMonth(MONTHS.DECEMBER, 1904));
+})
+
+test('testset calcOrdinal', () => {
+    assertEquals(2, calcOrdinal(1, MONTHS.JANUARY, 1900));
+    assertEquals(33, calcOrdinal(1, MONTHS.FEBRUARY, 1900));
+    assertEquals(61, calcOrdinal(1, MONTHS.MARCH, 1900));
+    assertEquals(367, calcOrdinal(1, MONTHS.JANUARY, 1901));
+    assertEquals(2958465, calcOrdinal(31, MONTHS.DECEMBER, 9999));
+})
+
+test('testset calcOrdinal in leap year', () => {
+    // 1904 is the first leap year after 1900
+    assertEquals(calcOrdinal(1, MONTHS.MARCH, 1904) - calcOrdinal(1, MONTHS.FEBRUARY, 1904), 29);
+    assertEquals(calcOrdinal(1, MONTHS.JANUARY, 1905) - calcOrdinal(1, MONTHS.JANUARY, 1904), 366);
+})
+
+test('testset addDays', () => {
     const newYear1900 = d(1, MONTHS.JANUARY, 1900);
     assertEquals(d(2, MONTHS.JANUARY, 1900), addDays(1, newYear1900));
     assertEquals(d(1, MONTHS.FEBRUARY, 1900), addDays(31, newYear1900));
@@ -197,7 +223,34 @@ xtest('testset addDays', () => {
 })
 
 
-xtest('testset addMonths', () => {
+test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth', () => {
+    const check = (day, month, year) => {
+        const ordinal = d(day, month, year);
+        assertEquals(year, ordinalToYear(ordinal));
+        assertEquals(month, ordinalToMonth(ordinal));
+        assertEquals(day, ordinalToDayOfMonth(ordinal));
+    }
+    check(1, MONTHS.JANUARY, 1900);
+    check(28, MONTHS.FEBRUARY, 1900);
+    check(1, MONTHS.MARCH, 1900);
+    check(29, MONTHS.FEBRUARY, 1904);
+    check(31, MONTHS.DECEMBER, 1904);
+    check(1, MONTHS.JANUARY, 1905);
+    check(31, MONTHS.DECEMBER, 2006);
+    check(31, MONTHS.DECEMBER, 9999);
+})
+
+test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth roundtrip', () => {
+    for (let ordinal = 2; ordinal <= 2958465; ordinal += 97) {
+        const year = ordinalToYear(ordinal);
+        const month = ordinalToMonth(ordinal);
+        const day = ordinalToDayOfMonth(ordinal);
+        assertEquals(ordinal, d(day, month, year));
+        assertTrue(day >= 1 && day <= lastDayOfMonth(month, year));
+    }
+})
+
+test('testset addMonths', () => {
     assertEquals(d(1, MONTHS.FEBRUARY, 1900), addMonths(1, d(1, MONTHS.JANUARY, 1900)));
     assertEquals(d(28, MONTHS.FEBRUARY, 1900), addMonths(1, d(31, MONTHS.JANUARY, 1900)));
     assertEquals(d(28, MONTHS.FEBRUARY, 1900), addMonths(1, d(30, MONTHS.JANUARY, 1900)));
@@ -212,7 +265,7 @@ xtest('testset addMonths', () => {
 
 })
 
-xtest('testset addYears', () => {
+test('testset addYears', () => {
 
     assertEquals(d(1, MONTHS.JANUARY, 1901), addYears(1, d(1, MONTHS.JANUARY, 1900)));
     assertEquals(d(28, MONTHS.FEBRUARY, 1905), addYears(1, d(29, MONTHS.FEBRUARY, 1904)));
@@ -220,32 +273,31 @@ xtest('testset addYears', () => {
     assertEquals(d(28, MONTHS.FEBRUARY, 1904), addYears(1, d(28, MONTHS.FEBRUARY, 1903)));
 })
 
-xtest('testset getPreviousDayOfWeek', () => {
+test('testset ordinalToWeekday', () => {
+    assertEquals(DAYS.MONDAY, ordinalToWeekday(d(1, MONTHS.JANUARY, 1900)));
+    assertEquals(DAYS.SUNDAY, ordinalToWeekday(d(7, MONTHS.JANUARY, 1900)));
+    assertEquals(DAYS.WEDNESDAY, ordinalToWeekday(d(1, MONTHS.MARCH, 2006)));
+    assertEquals(DAYS.SUNDAY, ordinalToWeekday(d(16, MONTHS.APRIL, 2006)));
+})
+
+test('testset getPreviousDayOfWeek', () => {
 
     assertEquals(d(24, MONTHS.FEBRUARY, 2006), getPreviousDayOfWeek(DAYS.FRIDAY, d(1, MONTHS.MARCH, 2006)));
     assertEquals(d(22, MONTHS.FEBRUARY, 2006), getPreviousDayOfWeek(DAYS.WEDNESDAY, d(1, MONTHS.MARCH, 2006)));
     assertEquals(d(29, MONTHS.FEBRUARY, 2004), getPreviousDayOfWeek(DAYS.SUNDAY, d(3, MONTHS.MARCH, 2004)));
     assertEquals(d(29, MONTHS.DECEMBER, 2004), getPreviousDayOfWeek(DAYS.WEDNESDAY, d(5, MONTHS.JANUARY, 2005)));
 
-    try {
-        getPreviousDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006));
-        fail("Invalid day of week code should throw exception");
-    } catch (e) {
-    }
+    expect(() => getPreviousDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
 })
 
-xtest('testset getFollowingDayOfWeek', () => {
+test('testset getFollowingDayOfWeek', () => {
     assertEquals(d(1, MONTHS.JANUARY, 2005), getFollowingDayOfWeek(DAYS.SATURDAY, d(26, MONTHS.DECEMBER, 2004)));
     assertEquals(d(3, MONTHS.MARCH, 2004), getFollowingDayOfWeek(DAYS.WEDNESDAY, d(28, MONTHS.FEBRUARY, 2004)));
 
-    try {
-        getFollowingDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006));
-        fail("Invalid day of week code should throw exception");
-    } catch (e) {
-    }
+    expect(() => getFollowingDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
 })
 
-xtest('testset getNearestDayOfWeek', () => {
+test('testset getNearestDayOfWeek', () => {
 
     assertEquals(d(16, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SUNDAY, d(16, MONTHS.APRIL, 2006)));
     assertEquals(d(16, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SUNDAY, d(17, MONTHS.APRIL, 2006)));
@@ -282,58 +334,57 @@ xtest('testset getNearestDayOfWeek', () => {
 
     assertEquals(d(22, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SATURDAY, d(22, MONTHS.APRIL, 2006)));
 
-    try {
-        getNearestDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006));
-        fail("Invalid day of week code should throw exception");
-    } catch (e) {
-    }
+    expect(() => getNearestDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
 })
 
-xtest('testset getEndOfCurrentMonth', () => {
-    const d = SerialDate.createInstance(2);
-    assertEquals(d(31, MONTHS.JANUARY, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.JANUARY, 2006)));
-    assertEquals(d(28, MONTHS.FEBRUARY, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.FEBRUARY, 2006)));
-    assertEquals(d(31, MONTHS.MARCH, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.MARCH, 2006)));
-    assertEquals(d(30, MONTHS.APRIL, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.APRIL, 2006)));
-    assertEquals(d(31, MONTHS.MAY, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.MAY, 2006)));
-    assertEquals(d(30, MONTHS.JUNE, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.JUNE, 2006)));
-    assertEquals(d(31, MONTHS.JULY, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.JULY, 2006)));
-    assertEquals(d(31, MONTHS.AUGUST, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.AUGUST, 2006)));
-    assertEquals(d(30, MONTHS.SEPTEMBER, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.SEPTEMBER, 2006)));
-    assertEquals(d(31, MONTHS.OCTOBER, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.OCTOBER, 2006)));
-    assertEquals(d(30, MONTHS.NOVEMBER, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.NOVEMBER, 2006)));
-    assertEquals(d(31, MONTHS.DECEMBER, 2006), d.getEndOfCurrentMonth(d(1, MONTHS.DECEMBER, 2006)));
-    assertEquals(d(29, MONTHS.FEBRUARY, 2008), d.getEndOfCurrentMonth(d(1, MONTHS.FEBRUARY, 2008)));
+test('testset getEndOfCurrentMonth', () => {
+    assertEquals(d(31, MONTHS.JANUARY, 2006), getEndOfCurrentMonth(d(1, MONTHS.JANUARY, 2006)));
+    assertEquals(d(28, MONTHS.FEBRUARY, 2006), getEndOfCurrentMonth(d(1, MONTHS.FEBRUARY, 2006)));
+    assertEquals(d(31, MONTHS.MARCH, 2006), getEndOfCurrentMonth(d(1, MONTHS.MARCH, 2006)));
+    assertEquals(d(30, MONTHS.APRIL, 2006), getEndOfCurrentMonth(d(1, MONTHS.APRIL, 2006)));
+    assertEquals(d(31, MONTHS.MAY, 2006), getEndOfCurrentMonth(d(1, MONTHS.MAY, 2006)));
+    assertEquals(d(30, MONTHS.JUNE, 2006), getEndOfCurrentMonth(d(1, MONTHS.JUNE, 2006)));
+    assertEquals(d(31, MONTHS.JULY, 2006), getEndOfCurrentMonth(d(1, MONTHS.JULY, 2006)));
+    assertEquals(d(31, MONTHS.AUGUST, 2006), getEndOfCurrentMonth(d(1, MONTHS.AUGUST, 2006)));
+    assertEquals(d(30, MONTHS.SEPTEMBER, 2006), getEndOfCurrentMonth(d(1, MONTHS.SEPTEMBER, 2006)));
+    assertEquals(d(31, MONTHS.OCTOBER, 2006), getEndOfCurrentMonth(d(1, MONTHS.OCTOBER, 2006)));
+    assertEquals(d(30, MONTHS.NOVEMBER, 2006), getEndOfCurrentMonth(d(1, MONTHS.NOVEMBER, 2006)));
+    assertEquals(d(31, MONTHS.DECEMBER, 2006), getEndOfCurrentMonth(d(1, MONTHS.DECEMBER, 2006)));
+    assertEquals(d(29, MONTHS.FEBRUARY, 2008), getEndOfCurrentMonth(d(1, MONTHS.FEBRUARY, 2008)));
 })
 
-xtest('testset weekInMonthToString', () => {
-    assertEquals("First", weekInMonthToString(FIRST_WEEK_IN_MONTH));
-    assertEquals("Second", weekInMonthToString(SECOND_WEEK_IN_MONTH));
-    assertEquals("Third", weekInMonthToString(THIRD_WEEK_IN_MONTH));
-    assertEquals("Fourth", weekInMonthToString(FOURTH_WEEK_IN_MONTH));
-    assertEquals("Last", weekInMonthToString(LAST_WEEK_IN_MONTH));
+test('testset weekInMonthToString', () => {
+    assertEquals("First", weekInMonthToString(WEEKCODES.FIRST_WEEK_IN_MONTH));
+    assertEquals("Second", weekInMonthToString(WEEKCODES.SECOND_WEEK_IN_MONTH));
+    assertEquals("Third", weekInMonthToString(WEEKCODES.THIRD_WEEK_IN_MONTH));
+    assertEquals("Fourth", weekInMonthToString(WEEKCODES.FOURTH_WEEK_IN_MONTH));
+    assertEquals("Last", weekInMonthToString(WEEKCODES.LAST_WEEK_IN_MONTH));
+    expect(() => weekInMonthToString(5)).toThrow();
 })
 
-xtest('testset relativeToString', () => {
-    assertEquals("Preceding", relativeToString(PRECEDING));
-    assertEquals("Nearest", relativeToString(NEAREST));
-    assertEquals("Following", relativeToString(FOLLOWING));
+test('testset relativeToString', () => {
+    assertEquals("Preceding", relativeToString(RELATIVE.PRECEDING));
+    assertEquals("Nearest", relativeToString(RELATIVE.NEAREST));
+    assertEquals("Following", relativeToString(RELATIVE.FOLLOWING));
+    expect(() => relativeToString(2)).toThrow();
 })
 
-xtest('testset createInstance 1', () => {
-    const date = createInstance(1, MONTHS.JANUARY, 1900);
-    assertEquals(1, date.getDayOfMonth());
-    assertEquals(MONTHS.JANUARY, date.getMonth());
-    assertEquals(1900, date.getYYYY());
-    assertEquals(2, date.toSerial());
+test('testset createInstance 1', () => {
+    const date = d(1, MONTHS.JANUARY, 1900);
+    assertEquals(1, ordinalToDayOfMonth(date));
+    assertEquals(MONTHS.JANUARY, ordinalToMonth(date));
+    assertEquals(1900, ordinalToYear(date));
+    assertEquals(2, date);
 })
 
-xtest('testset createInstance 2', () => {
+test('testset createInstance 2', () => {
     assertEquals(d(1, MONTHS.JANUARY, 1900), createInstance(2));
     assertEquals(d(1, MONTHS.JANUARY, 1901), createInstance(367));
+    expect(() => createInstance(1)).toThrow();
+    expect(() => createInstance(2958466)).toThrow();
 })
 
-xtest('testset createInstance 3', () => {
-    assertEquals(d(1, MONTHS.JANUARY, 1900), createInstance(new GregorianCalendar(1900, 0, 1).getTime()));
-    assertEquals(d(1, MONTHS.JANUARY, 2006), createInstance(new GregorianCalendar(2006, 0, 1).getTime()));
+test('testset createInstance 3', () => {
+    assertEquals(d(1, MONTHS.JANUARY, 1900), createInstance(new Date(1900, 0, 1)));
+    assertEquals(d(1, MONTHS.JANUARY, 2006), createInstance(new Date(2006, 0, 1)));
 })
