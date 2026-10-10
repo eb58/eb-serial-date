@@ -1,16 +1,19 @@
 {
    "name": "serial-date",
    "version": "1.0.0",
+   "main": "dist/serial-date.js",
+   "types": "dist/serial-date.d.ts",
+   "files": ["dist"],
    "keywords": [],
    "jest": {
       "preset": "ts-jest",
-      "//": "Comment goes here",
       "verbose": true
    },
    "author": "eb",
    "contributors": [],
    "scripts": {
-      "start": "node main.js",
+      "build": "tsc -p tsconfig.build.json",
+      "prepack": "npm run build",
       "test": "jest",
       "typecheck": "tsc"
    },

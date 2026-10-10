@@ -49,6 +49,8 @@ import {
     isOnOrAfter,
     isInRange,
     getMonths,
+    days,
+    months,
     SERIAL_LOWER_BOUND,
     SERIAL_UPPER_BOUND,
     MINIMUM_YEAR_SUPPORTED,
@@ -60,6 +62,43 @@ const d = calcSerial
 const assertEquals = (a: unknown, b: unknown) => expect(a).toBe(b)
 const assertTrue = (a: unknown) => expect(a).toBe(true)
 const assertFalse = (a: unknown) => expect(a).toBe(false)
+
+test.each([NaN, Infinity, -Infinity, 1.5, 2.5])('rejects invalid numeric input %s', value => {
+    expect(() => fromSerial(value)).toThrow();
+    expect(isValidWeekdayCode(value)).toBe(false);
+    expect(isValidMonthCode(value)).toBe(false);
+    expect(isValidWeekInMonthCode(value)).toBe(false);
+    const date = d(1, MONTHS.JANUARY, 2000);
+    for (const add of [addDays, addMonths, addYears]) {
+        expect(() => add(value, date)).toThrow();
+    }
+})
+
+test('arithmetic rejects fractional offsets even when rounding would hide them', () => {
+    const date = d(1, MONTHS.JANUARY, 2000);
+    expect(() => addDays(Number.EPSILON, date)).toThrow();
+    expect(() => addMonths(Number.EPSILON, date)).toThrow();
+    expect(() => addYears(0.5, date)).toThrow();
+    expect(addMonths(-1, date)).toBe(d(1, MONTHS.DECEMBER, 1999));
+    expect(addYears(-1, date)).toBe(d(1, MONTHS.JANUARY, 1999));
+})
+
+test('name parsing accepts only full names and three-letter abbreviations', () => {
+    for (const input of ['', '   ', 'J', 'Ju', 'Janu', 'January!']) {
+        expect(stringToMonthCode(input)).toBe(-1);
+    }
+    for (const input of ['', '   ', 'T', 'Tu', 'Tues', 'Tuesday!']) {
+        expect(stringToWeekdayCode(input)).toBe(-1);
+    }
+    expect(stringToMonthCode(' jAn ')).toBe(MONTHS.JANUARY);
+    expect(stringToMonthCode(' JULY ')).toBe(MONTHS.JULY);
+    expect(stringToWeekdayCode(' tHu ')).toBe(DAYS.THURSDAY);
+    expect(stringToWeekdayCode(' MONDAY ')).toBe(DAYS.MONDAY);
+})
+
+test('fromDate rejects invalid Date objects', () => {
+    expect(() => fromDate(new Date(NaN))).toThrow();
+})
 
 
 test('testset isValidWeekdayCode', () => {
@@ -532,6 +571,17 @@ test('testset getMonths', () => {
     assertEquals("January", getMonths(false)[0]);
     assertEquals("Jan", getMonths(true)[0]);
     assertEquals("Dec", getMonths(true)[11]);
+})
+
+test('exported name lists cannot change date formatting', () => {
+    for (const names of [days, months]) {
+        // @ts-expect-error exported lists are readonly and frozen at runtime
+        expect(() => names.reverse()).toThrow(TypeError);
+        // @ts-expect-error individual names cannot be overwritten either
+        expect(() => { names[0] = 'Changed'; }).toThrow(TypeError);
+    }
+    expect(weekdayCodeToString(DAYS.MONDAY)).toBe('Monday');
+    expect(monthCodeToString(MONTHS.JANUARY)).toBe('January');
 })
 
 test('testset stringToMonthCode with numbers', () => {

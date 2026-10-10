@@ -31,7 +31,8 @@ const jsUpperCaseFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).t
 const mod = (a: number, n: number) => (a % n + n) % n // always >= 0, unlike %
 
 const nameToCode = <T extends Record<string, number>>(codes: T, s: string): T[keyof T] | -1 => {
-    const name = Object.keys(codes).find(n => n.toLowerCase().startsWith(s.trim().toLowerCase()));
+    const input = s.trim().toLowerCase();
+    const name = Object.keys(codes).find(n => n.toLowerCase() === input || n.slice(0, 3).toLowerCase() === input);
     return name ? codes[name as keyof T] : -1;
 }
 const codeToName = (codes: Record<string, number>, c: number, errorMessage: string): string => {
@@ -40,12 +41,12 @@ const codeToName = (codes: Record<string, number>, c: number, errorMessage: stri
     return name
 }
 
-export const days = Object.keys(DAYS)
-export const months = Object.keys(MONTHS)
+export const days = Object.freeze(Object.keys(DAYS))
+export const months = Object.freeze(Object.keys(MONTHS))
 
-export const isValidWeekdayCode = (d: number): d is Weekday => 1 <= d && d <= 7
-export const isValidMonthCode = (m: number): m is Month => 1 <= m && m <= 12
-export const isValidWeekInMonthCode = (m: number): m is WeekInMonth => 0 <= m && m <= 4
+export const isValidWeekdayCode = (d: number): d is Weekday => Number.isInteger(d) && 1 <= d && d <= 7
+export const isValidMonthCode = (m: number): m is Month => Number.isInteger(m) && 1 <= m && m <= 12
+export const isValidWeekInMonthCode = (m: number): m is WeekInMonth => Number.isInteger(m) && 0 <= m && m <= 4
 
 const assertValidWeekdayCode = (c: number): Weekday => {
     if (!isValidWeekdayCode(c)) throw Error("Invalid weekday code!")
@@ -107,7 +108,7 @@ export const calcSerial = (day: number, month: Month, year: number): SerialDate 
 }
 
 export const fromSerial = (serial: number): SerialDate => {
-    if (serial < SERIAL_LOWER_BOUND || serial > SERIAL_UPPER_BOUND)
+    if (!Number.isInteger(serial) || serial < SERIAL_LOWER_BOUND || serial > SERIAL_UPPER_BOUND)
         throw Error("Invalid serial date!")
     return serial as SerialDate
 }
@@ -131,9 +132,17 @@ export const serialToDayOfMonth = (date: SerialDate) =>
 // 1/1/1900 was a Monday
 export const serialToWeekday = (date: SerialDate) => ((date - SERIAL_LOWER_BOUND) % 7 + DAYS.MONDAY) as Weekday
 
-export const addDays = (n: number, date: SerialDate) => fromSerial(date + n)
+const assertIntegerOffset = (n: number) => {
+    if (!Number.isInteger(n)) throw Error('Date offsets must be integers.');
+}
+
+export const addDays = (n: number, date: SerialDate) => {
+    assertIntegerOffset(n);
+    return fromSerial(date + n);
+}
 
 export const addMonths = (n: number, date: SerialDate) => {
+    assertIntegerOffset(n);
     const monthsSinceYearZero = serialToYear(date) * 12 + (serialToMonth(date) - 1) + n;
     const year = Math.floor(monthsSinceYearZero / 12);
     const month = (monthsSinceYearZero % 12 + 1) as Month;
@@ -141,7 +150,10 @@ export const addMonths = (n: number, date: SerialDate) => {
     return calcSerial(day, month, year);
 }
 
-export const addYears = (n: number, date: SerialDate) => addMonths(12 * n, date)
+export const addYears = (n: number, date: SerialDate) => {
+    assertIntegerOffset(n);
+    return addMonths(12 * n, date);
+}
 
 export const getPreviousDayOfWeek = (targetWeekday: Weekday, date: SerialDate) => {
     assertValidWeekdayCode(targetWeekday);

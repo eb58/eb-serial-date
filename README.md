@@ -12,7 +12,7 @@ in *Clean Code*, Kapitel 16 „Refactoring SerialDate“ als Fallstudie verwende
 
 ## Grundidee
 
-**Ein Datum ist einfach seine Tageszahl.** Es gibt keine Klassen und keine Objekte, nur Funktionen auf Zahlen.
+**Ein Datum ist einfach seine Tageszahl.** Es gibt keine eigenen Datumsobjekte zur Laufzeit, nur Funktionen auf Zahlen.
 Vergleichen, Sortieren und Speichern funktionieren damit ohne weiteres. Geschrieben ist die Bibliothek in TypeScript,
 und der Compiler unterscheidet ein Datum (`SerialDate`) von einer gewöhnlichen Zahl, ohne dass dafür zur Laufzeit etwas
 anderes als die Zahl existiert.
@@ -43,6 +43,11 @@ Wochentage laufen von `MONDAY = 1` bis `SUNDAY = 7`, Monate von `JANUARY = 1` bi
 `isInRange(datum, d1, d2, intervall)` kennt die Intervalle `OPEN`, `CLOSED_LEFT`, `CLOSED_RIGHT` und `CLOSED`
 (Standard). Die Grenzen dürfen vertauscht sein.
 
+Monats- und Wochentagsnamen werden als vollständiger englischer Name oder dreistelliges Kürzel akzeptiert,
+unabhängig von Groß- und Kleinschreibung und umgebenden Leerzeichen. Leere, unbekannte oder anders abgekürzte Namen
+liefern `-1`. Monatsnummern können außerdem als Zeichenfolge von `"1"` bis `"12"` angegeben werden.
+Die exportierten Namenslisten `days` und `months` sind eingefroren und unveränderlich.
+
 ## Typen
 
 | Typ | Bedeutung |
@@ -64,7 +69,8 @@ calcSerial(1, 2006, 12)   // Fehler: 2006 ist kein Month
 
 Die Prüfungen zur Laufzeit bleiben trotzdem, denn JavaScript-Aufrufer sehen die Typen nicht. Ein Datum kommt aus
 `calcSerial`, `fromSerial` oder `fromDate`; wer eine Zahl aus anderer Quelle hat, macht sie mit `fromSerial(zahl)` zum
-`SerialDate`, und das prüft dabei den Bereich.
+`SerialDate`, und das prüft dabei Ganzzahligkeit und Bereich. Auch die Zeitabstände für `addDays`, `addMonths` und
+`addYears` müssen ganze Zahlen sein; `NaN` und unendliche Werte werden abgelehnt.
 
 Ungültige Werte werfen einen Fehler: ein Tag, den es im Monat nicht gibt, ein Jahr außerhalb von 1900–9999,
 ein ungültiger Monats- oder Wochentagscode und jedes Ergebnis einer Rechnung außerhalb des Bereichs.
@@ -75,11 +81,16 @@ ein ungültiger Monats- oder Wochentagscode und jedes Ergebnis einer Rechnung au
 npm install
 npm test          # Tests
 npm run typecheck # Typprüfung mit tsc
+npm run build     # JavaScript und Typdeklarationen in dist erzeugen
 ```
 
 Die Tests übernehmen die Fälle der Originaltests und ergänzen sie, zum Beispiel um Schaltjahre und die Bereichsgrenzen.
 Aufrufe mit absichtlich ungültigen Codes tragen ein `@ts-expect-error`: Der Compiler lehnt sie ab, und der Test prüft,
 dass zur Laufzeit trotzdem ein Fehler geworfen wird.
+
+Nach dem Build lässt sich das Paket in Node.js mit `require('./')` aus dem Repository-Verzeichnis laden.
+Beim Verpacken mit `npm pack` wird der Build automatisch ausgeführt. Das Paket enthält die erzeugten Dateien aus
+`dist`, einschließlich der TypeScript-Typdeklarationen.
 
 ## Was bewusst fehlt
 
@@ -99,14 +110,14 @@ Klassenhierarchie und Factories viel Komplexität, ohne einen entsprechenden Nut
 
 Beim Nachbauen sind zwei Dinge aufgefallen.
 
-**Die Lösung kommt mit sehr wenig Code aus.** Ohne Kommentare und Leerzeilen hat `src/serial-date.ts` rund 156 Zeilen.
+**Die Lösung kommt mit sehr wenig Code aus.** Ohne Kommentare und Leerzeilen hat `src/serial-date.ts` rund 166 Zeilen.
 Zum Vergleich (grob gezählt):
 
 | Fassung | Zeilen gesamt | davon Code |
 |---|---|---|
 | Original (`SerialDate` + `SpreadsheetDate`) | ca. 1500 | ca. 550 |
 | Martins Überarbeitung (11 Dateien) | ca. 800 | ca. 505 |
-| diese Bibliothek (TypeScript) | 192 | 156 |
+| diese Bibliothek (TypeScript) | 203 | 166 |
 
 Die Zahlen des Originals stammen aus den Quelltext-Listings von
 [SerialDate](https://www.jfree.org/jcommon/api/src-html/org/jfree/date/SerialDate.html) und
