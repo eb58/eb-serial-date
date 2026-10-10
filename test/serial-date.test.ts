@@ -20,14 +20,14 @@ import {
     monthCodeToShortString,
     monthCodeToQuarter,
     lastDayOfMonth,
-    calcOrdinal,
-    ordinalToYear,
-    ordinalToMonth,
-    ordinalToDayOfMonth,
+    calcSerial,
+    serialToYear,
+    serialToMonth,
+    serialToDayOfMonth,
     addDays,
     addMonths,
     addYears,
-    ordinalToWeekday,
+    serialToWeekday,
     getPreviousDayOfWeek,
     getFollowingDayOfWeek,
     getNearestDayOfWeek,
@@ -40,7 +40,7 @@ import {
     DATE_INTERVAL,
     DateInterval,
     toDate,
-    ordinalToString,
+    serialToString,
     compare,
     isOn,
     isBefore,
@@ -55,7 +55,7 @@ import {
     MAXIMUM_YEAR_SUPPORTED,
 } from '../src/serial-date'
 
-const d = calcOrdinal
+const d = calcSerial
 
 const assertEquals = (a: unknown, b: unknown) => expect(a).toBe(b)
 const assertTrue = (a: unknown) => expect(a).toBe(true)
@@ -223,18 +223,18 @@ test('testset lastDayOfMonth in leap year only changes february', () => {
     assertEquals(31, lastDayOfMonth(MONTHS.DECEMBER, 1904));
 })
 
-test('testset calcOrdinal', () => {
-    assertEquals(2, calcOrdinal(1, MONTHS.JANUARY, 1900));
-    assertEquals(33, calcOrdinal(1, MONTHS.FEBRUARY, 1900));
-    assertEquals(61, calcOrdinal(1, MONTHS.MARCH, 1900));
-    assertEquals(367, calcOrdinal(1, MONTHS.JANUARY, 1901));
-    assertEquals(2958465, calcOrdinal(31, MONTHS.DECEMBER, 9999));
+test('testset calcSerial', () => {
+    assertEquals(2, calcSerial(1, MONTHS.JANUARY, 1900));
+    assertEquals(33, calcSerial(1, MONTHS.FEBRUARY, 1900));
+    assertEquals(61, calcSerial(1, MONTHS.MARCH, 1900));
+    assertEquals(367, calcSerial(1, MONTHS.JANUARY, 1901));
+    assertEquals(2958465, calcSerial(31, MONTHS.DECEMBER, 9999));
 })
 
-test('testset calcOrdinal in leap year', () => {
+test('testset calcSerial in leap year', () => {
     // 1904 is the first leap year after 1900
-    assertEquals(calcOrdinal(1, MONTHS.MARCH, 1904) - calcOrdinal(1, MONTHS.FEBRUARY, 1904), 29);
-    assertEquals(calcOrdinal(1, MONTHS.JANUARY, 1905) - calcOrdinal(1, MONTHS.JANUARY, 1904), 366);
+    assertEquals(calcSerial(1, MONTHS.MARCH, 1904) - calcSerial(1, MONTHS.FEBRUARY, 1904), 29);
+    assertEquals(calcSerial(1, MONTHS.JANUARY, 1905) - calcSerial(1, MONTHS.JANUARY, 1904), 366);
 })
 
 test('testset addDays', () => {
@@ -246,12 +246,12 @@ test('testset addDays', () => {
 })
 
 
-test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth', () => {
+test('testset serialToYear, serialToMonth, serialToDayOfMonth', () => {
     const check = (day: number, month: Month, year: number) => {
-        const ordinal = d(day, month, year);
-        assertEquals(year, ordinalToYear(ordinal));
-        assertEquals(month, ordinalToMonth(ordinal));
-        assertEquals(day, ordinalToDayOfMonth(ordinal));
+        const date = d(day, month, year);
+        assertEquals(year, serialToYear(date));
+        assertEquals(month, serialToMonth(date));
+        assertEquals(day, serialToDayOfMonth(date));
     }
     check(1, MONTHS.JANUARY, 1900);
     check(28, MONTHS.FEBRUARY, 1900);
@@ -263,13 +263,13 @@ test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth', () => {
     check(31, MONTHS.DECEMBER, 9999);
 })
 
-test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth roundtrip', () => {
+test('testset serialToYear, serialToMonth, serialToDayOfMonth roundtrip', () => {
     for (let serial = SERIAL_LOWER_BOUND; serial <= SERIAL_UPPER_BOUND; serial += 97) {
-        const ordinal = fromSerial(serial);
-        const year = ordinalToYear(ordinal);
-        const month = ordinalToMonth(ordinal);
-        const day = ordinalToDayOfMonth(ordinal);
-        assertEquals(ordinal, d(day, month, year));
+        const date = fromSerial(serial);
+        const year = serialToYear(date);
+        const month = serialToMonth(date);
+        const day = serialToDayOfMonth(date);
+        assertEquals(date, d(day, month, year));
         assertTrue(day >= 1 && day <= lastDayOfMonth(month, year));
     }
 })
@@ -306,11 +306,11 @@ test('testset addYears', () => {
     assertEquals(d(28, MONTHS.FEBRUARY, 1904), addYears(1, d(28, MONTHS.FEBRUARY, 1903)));
 })
 
-test('testset ordinalToWeekday', () => {
-    assertEquals(DAYS.MONDAY, ordinalToWeekday(d(1, MONTHS.JANUARY, 1900)));
-    assertEquals(DAYS.SUNDAY, ordinalToWeekday(d(7, MONTHS.JANUARY, 1900)));
-    assertEquals(DAYS.WEDNESDAY, ordinalToWeekday(d(1, MONTHS.MARCH, 2006)));
-    assertEquals(DAYS.SUNDAY, ordinalToWeekday(d(16, MONTHS.APRIL, 2006)));
+test('testset serialToWeekday', () => {
+    assertEquals(DAYS.MONDAY, serialToWeekday(d(1, MONTHS.JANUARY, 1900)));
+    assertEquals(DAYS.SUNDAY, serialToWeekday(d(7, MONTHS.JANUARY, 1900)));
+    assertEquals(DAYS.WEDNESDAY, serialToWeekday(d(1, MONTHS.MARCH, 2006)));
+    assertEquals(DAYS.SUNDAY, serialToWeekday(d(16, MONTHS.APRIL, 2006)));
 })
 
 test('testset getPreviousDayOfWeek', () => {
@@ -417,9 +417,9 @@ test('testset relativeToString', () => {
 
 test('testset date parts of a calculated date', () => {
     const date = d(1, MONTHS.JANUARY, 1900);
-    assertEquals(1, ordinalToDayOfMonth(date));
-    assertEquals(MONTHS.JANUARY, ordinalToMonth(date));
-    assertEquals(1900, ordinalToYear(date));
+    assertEquals(1, serialToDayOfMonth(date));
+    assertEquals(MONTHS.JANUARY, serialToMonth(date));
+    assertEquals(1900, serialToYear(date));
     assertEquals(2, date);
 })
 
@@ -448,10 +448,10 @@ test('testset toDate', () => {
     expect(toDate(d(31, MONTHS.DECEMBER, 9999))).toEqual(new Date(9999, 11, 31));
 })
 
-test('testset ordinalToString', () => {
-    assertEquals("1-January-1900", ordinalToString(d(1, MONTHS.JANUARY, 1900)));
-    assertEquals("29-February-2004", ordinalToString(d(29, MONTHS.FEBRUARY, 2004)));
-    assertEquals("31-December-9999", ordinalToString(d(31, MONTHS.DECEMBER, 9999)));
+test('testset serialToString', () => {
+    assertEquals("1-January-1900", serialToString(d(1, MONTHS.JANUARY, 1900)));
+    assertEquals("29-February-2004", serialToString(d(29, MONTHS.FEBRUARY, 2004)));
+    assertEquals("31-December-9999", serialToString(d(31, MONTHS.DECEMBER, 9999)));
 })
 
 test('testset compare', () => {
@@ -559,21 +559,21 @@ test('testset supported bounds', () => {
     assertEquals(9999, MAXIMUM_YEAR_SUPPORTED);
 })
 
-test('testset calcOrdinal validates its arguments', () => {
-    expect(() => calcOrdinal(1, MONTHS.JANUARY, 1899)).toThrow();
-    expect(() => calcOrdinal(1, MONTHS.JANUARY, 10000)).toThrow();
+test('testset calcSerial validates its arguments', () => {
+    expect(() => calcSerial(1, MONTHS.JANUARY, 1899)).toThrow();
+    expect(() => calcSerial(1, MONTHS.JANUARY, 10000)).toThrow();
     // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => calcOrdinal(1, 0, 2006)).toThrow();
+    expect(() => calcSerial(1, 0, 2006)).toThrow();
     // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => calcOrdinal(1, 13, 2006)).toThrow();
-    expect(() => calcOrdinal(0, MONTHS.JANUARY, 2006)).toThrow();
-    expect(() => calcOrdinal(32, MONTHS.JANUARY, 2006)).toThrow();
-    expect(() => calcOrdinal(29, MONTHS.FEBRUARY, 1901)).toThrow();
-    expect(() => calcOrdinal(31, MONTHS.APRIL, 2006)).toThrow();
-    expect(() => calcOrdinal(1.5, MONTHS.JANUARY, 2006)).toThrow();
-    assertEquals(SERIAL_LOWER_BOUND, calcOrdinal(1, MONTHS.JANUARY, 1900));
-    assertEquals(SERIAL_UPPER_BOUND, calcOrdinal(31, MONTHS.DECEMBER, 9999));
-    assertTrue(calcOrdinal(29, MONTHS.FEBRUARY, 1904) > 0);
+    expect(() => calcSerial(1, 13, 2006)).toThrow();
+    expect(() => calcSerial(0, MONTHS.JANUARY, 2006)).toThrow();
+    expect(() => calcSerial(32, MONTHS.JANUARY, 2006)).toThrow();
+    expect(() => calcSerial(29, MONTHS.FEBRUARY, 1901)).toThrow();
+    expect(() => calcSerial(31, MONTHS.APRIL, 2006)).toThrow();
+    expect(() => calcSerial(1.5, MONTHS.JANUARY, 2006)).toThrow();
+    assertEquals(SERIAL_LOWER_BOUND, calcSerial(1, MONTHS.JANUARY, 1900));
+    assertEquals(SERIAL_UPPER_BOUND, calcSerial(31, MONTHS.DECEMBER, 9999));
+    assertTrue(calcSerial(29, MONTHS.FEBRUARY, 1904) > 0);
 })
 
 test('testset date arithmetic stays within the supported range', () => {

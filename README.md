@@ -18,20 +18,20 @@ und der Compiler unterscheidet ein Datum (`SerialDate`) von einer gewöhnlichen 
 anderes als die Zahl existiert.
 
 ```ts
-import { calcOrdinal, addMonths, ordinalToString, isBefore, MONTHS } from './src/serial-date'
+import { calcSerial, addMonths, serialToString, isBefore, MONTHS } from './src/serial-date'
 
-const d = calcOrdinal                                   // d(tag, monat, jahr) -> Tageszahl
-const ende = addMonths(1, d(31, MONTHS.JANUARY, 1900))  // 28. Februar 1900, Tag wird gekappt
-ordinalToString(ende)                                   // '28-February-1900'
-isBefore(d(1, MONTHS.JANUARY, 1900), ende)              // true
+const d = calcSerial                                   // d(tag, monat, jahr) -> Tageszahl
+const ende = addMonths(1, d(31, MONTHS.JANUARY, 1900)) // 28. Februar 1900, Tag wird gekappt
+serialToString(ende)                                   // '28-February-1900'
+isBefore(d(1, MONTHS.JANUARY, 1900), ende)             // true
 ```
 
 ## Funktionen
 
 | Gruppe | Funktionen |
 |---|---|
-| Erzeugen | `calcOrdinal(tag, monat, jahr)`, `fromSerial(tageszahl)`, `fromDate(Date)` |
-| Zerlegen | `ordinalToYear`, `ordinalToMonth`, `ordinalToDayOfMonth`, `ordinalToWeekday`, `toDate`, `ordinalToString` |
+| Erzeugen | `calcSerial(tag, monat, jahr)`, `fromSerial(tageszahl)`, `fromDate(Date)` |
+| Zerlegen | `serialToYear`, `serialToMonth`, `serialToDayOfMonth`, `serialToWeekday`, `toDate`, `serialToString` |
 | Rechnen | `addDays`, `addMonths`, `addYears`, `getEndOfCurrentMonth` |
 | Wochentage | `getPreviousDayOfWeek`, `getFollowingDayOfWeek`, `getNearestDayOfWeek` |
 | Vergleichen | `compare`, `isOn`, `isBefore`, `isOnOrBefore`, `isAfter`, `isOnOrAfter`, `isInRange` |
@@ -55,15 +55,15 @@ Wochentage laufen von `MONDAY = 1` bis `SUNDAY = 7`, Monate von `JANUARY = 1` bi
 Damit lehnt der Compiler typische Verwechslungen ab:
 
 ```ts
-const date = calcOrdinal(1, MONTHS.JANUARY, 2006)
+const date = calcSerial(1, MONTHS.JANUARY, 2006)
 addDays(5, date)          // ok
 addDays(date, 5)          // Fehler: Argumente vertauscht
 addDays(5, 3)             // Fehler: eine Zahl ist kein Datum
-calcOrdinal(1, 2006, 12)  // Fehler: 2006 ist kein Month
+calcSerial(1, 2006, 12)   // Fehler: 2006 ist kein Month
 ```
 
 Die Prüfungen zur Laufzeit bleiben trotzdem, denn JavaScript-Aufrufer sehen die Typen nicht. Ein Datum kommt aus
-`calcOrdinal`, `fromSerial` oder `fromDate`; wer eine Zahl aus anderer Quelle hat, macht sie mit `fromSerial(zahl)` zum
+`calcSerial`, `fromSerial` oder `fromDate`; wer eine Zahl aus anderer Quelle hat, macht sie mit `fromSerial(zahl)` zum
 `SerialDate`, und das prüft dabei den Bereich.
 
 Ungültige Werte werfen einen Fehler: ein Tag, den es im Monat nicht gibt, ein Jahr außerhalb von 1900–9999,

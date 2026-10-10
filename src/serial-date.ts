@@ -1,4 +1,4 @@
-// a date is its ordinal (serial number); the brand exists only at compile time
+// a date is its serial number; the brand exists only at compile time
 export type SerialDate = number & { readonly __brand: 'SerialDate' }
 
 export const DAYS = { MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6, SUNDAY: 7 } as const
@@ -88,7 +88,7 @@ export const relativeToString = (c: Relative) =>
     jsUpperCaseFirst(codeToName(RELATIVE, c, "Invalid relative code!"))
 
 // no validation, so that the year after the last supported year can be used for searching
-const ordinalOf = (day: number, month: Month, year: number) => {
+const serialOf = (day: number, month: Month, year: number) => {
     const leapDaysForYear = leapYearCount(year - 1);
     const daysUpToYear = (year - MINIMUM_YEAR_SUPPORTED) * 365 + leapDaysForYear;
     const daysUpToMonth = AGGREGATE_DAYS_TO_END_OF_PRECEDING_MONTH[month] + (isLeapYear(year) && month > MONTHS.FEBRUARY ? 1 : 0)
@@ -96,14 +96,14 @@ const ordinalOf = (day: number, month: Month, year: number) => {
     return daysUpToYear + daysUpToMonth + daysInMonth + SERIAL_LOWER_BOUND;
 }
 
-export const calcOrdinal = (day: number, month: Month, year: number): SerialDate => {
+export const calcSerial = (day: number, month: Month, year: number): SerialDate => {
     if (!Number.isInteger(year) || year < MINIMUM_YEAR_SUPPORTED || year > MAXIMUM_YEAR_SUPPORTED)
         throw Error(`The 'year' argument must be in range ${MINIMUM_YEAR_SUPPORTED} to ${MAXIMUM_YEAR_SUPPORTED}.`)
     if (!Number.isInteger(month) || !isValidMonthCode(month))
         throw Error("The 'month' argument must be in the range 1 to 12.")
     if (!Number.isInteger(day) || day < 1 || day > lastDayOfMonth(month, year))
         throw Error("Invalid 'day' argument.")
-    return ordinalOf(day, month, year) as SerialDate;
+    return serialOf(day, month, year) as SerialDate;
 }
 
 export const fromSerial = (serial: number): SerialDate => {
@@ -113,79 +113,79 @@ export const fromSerial = (serial: number): SerialDate => {
 }
 
 export const fromDate = (date: Date): SerialDate =>
-    calcOrdinal(date.getDate(), (date.getMonth() + 1) as Month, date.getFullYear())
+    calcSerial(date.getDate(), (date.getMonth() + 1) as Month, date.getFullYear())
 
-export const ordinalToYear = (ordinal: SerialDate) => {
-    let year = MINIMUM_YEAR_SUPPORTED + Math.floor((ordinal - SERIAL_LOWER_BOUND) / 365.25);
-    while (ordinalOf(1, MONTHS.JANUARY, year + 1) <= ordinal) year++;
-    while (ordinalOf(1, MONTHS.JANUARY, year) > ordinal) year--;
+export const serialToYear = (date: SerialDate) => {
+    let year = MINIMUM_YEAR_SUPPORTED + Math.floor((date - SERIAL_LOWER_BOUND) / 365.25);
+    while (serialOf(1, MONTHS.JANUARY, year + 1) <= date) year++;
+    while (serialOf(1, MONTHS.JANUARY, year) > date) year--;
     return year;
 }
-export const ordinalToMonth = (ordinal: SerialDate) => {
-    const year = ordinalToYear(ordinal);
-    return Object.values(MONTHS).filter(month => ordinalOf(1, month, year) <= ordinal).pop() as Month;
+export const serialToMonth = (date: SerialDate) => {
+    const year = serialToYear(date);
+    return Object.values(MONTHS).filter(month => serialOf(1, month, year) <= date).pop() as Month;
 }
-export const ordinalToDayOfMonth = (ordinal: SerialDate) =>
-    ordinal - ordinalOf(1, ordinalToMonth(ordinal), ordinalToYear(ordinal)) + 1
+export const serialToDayOfMonth = (date: SerialDate) =>
+    date - serialOf(1, serialToMonth(date), serialToYear(date)) + 1
 
 // 1/1/1900 was a Monday
-export const ordinalToWeekday = (ordinal: SerialDate) => ((ordinal - SERIAL_LOWER_BOUND) % 7 + DAYS.MONDAY) as Weekday
+export const serialToWeekday = (date: SerialDate) => ((date - SERIAL_LOWER_BOUND) % 7 + DAYS.MONDAY) as Weekday
 
-export const addDays = (n: number, ordinal: SerialDate) => fromSerial(ordinal + n)
+export const addDays = (n: number, date: SerialDate) => fromSerial(date + n)
 
-export const addMonths = (n: number, ordinal: SerialDate) => {
-    const monthsSinceYearZero = ordinalToYear(ordinal) * 12 + (ordinalToMonth(ordinal) - 1) + n;
+export const addMonths = (n: number, date: SerialDate) => {
+    const monthsSinceYearZero = serialToYear(date) * 12 + (serialToMonth(date) - 1) + n;
     const year = Math.floor(monthsSinceYearZero / 12);
     const month = (monthsSinceYearZero % 12 + 1) as Month;
-    const day = Math.min(ordinalToDayOfMonth(ordinal), lastDayOfMonth(month, year));
-    return calcOrdinal(day, month, year);
+    const day = Math.min(serialToDayOfMonth(date), lastDayOfMonth(month, year));
+    return calcSerial(day, month, year);
 }
 
-export const addYears = (n: number, ordinal: SerialDate) => addMonths(12 * n, ordinal)
+export const addYears = (n: number, date: SerialDate) => addMonths(12 * n, date)
 
-export const getPreviousDayOfWeek = (targetWeekday: Weekday, ordinal: SerialDate) => {
+export const getPreviousDayOfWeek = (targetWeekday: Weekday, date: SerialDate) => {
     assertValidWeekdayCode(targetWeekday);
-    const daysBack = mod(ordinalToWeekday(ordinal) - targetWeekday - 1, 7) + 1;
-    return addDays(-daysBack, ordinal);
+    const daysBack = mod(serialToWeekday(date) - targetWeekday - 1, 7) + 1;
+    return addDays(-daysBack, date);
 }
 
-export const getFollowingDayOfWeek = (targetWeekday: Weekday, ordinal: SerialDate) => {
+export const getFollowingDayOfWeek = (targetWeekday: Weekday, date: SerialDate) => {
     assertValidWeekdayCode(targetWeekday);
-    const daysForward = mod(targetWeekday - ordinalToWeekday(ordinal) - 1, 7) + 1;
-    return addDays(daysForward, ordinal);
+    const daysForward = mod(targetWeekday - serialToWeekday(date) - 1, 7) + 1;
+    return addDays(daysForward, date);
 }
 
-export const getNearestDayOfWeek = (targetWeekday: Weekday, ordinal: SerialDate) => {
+export const getNearestDayOfWeek = (targetWeekday: Weekday, date: SerialDate) => {
     assertValidWeekdayCode(targetWeekday);
-    const daysToTarget = mod(targetWeekday - ordinalToWeekday(ordinal) + 3, 7) - 3;
-    return addDays(daysToTarget, ordinal);
+    const daysToTarget = mod(targetWeekday - serialToWeekday(date) + 3, 7) - 3;
+    return addDays(daysToTarget, date);
 }
 
-export const getEndOfCurrentMonth = (ordinal: SerialDate) => {
-    const month = ordinalToMonth(ordinal);
-    const year = ordinalToYear(ordinal);
-    return calcOrdinal(lastDayOfMonth(month, year), month, year);
+export const getEndOfCurrentMonth = (date: SerialDate) => {
+    const month = serialToMonth(date);
+    const year = serialToYear(date);
+    return calcSerial(lastDayOfMonth(month, year), month, year);
 }
 
-export const toDate = (ordinal: SerialDate) =>
-    new Date(ordinalToYear(ordinal), ordinalToMonth(ordinal) - 1, ordinalToDayOfMonth(ordinal))
+export const toDate = (date: SerialDate) =>
+    new Date(serialToYear(date), serialToMonth(date) - 1, serialToDayOfMonth(date))
 
 // e.g. 1-January-1900
-export const ordinalToString = (ordinal: SerialDate) =>
-    `${ordinalToDayOfMonth(ordinal)}-${monthCodeToString(ordinalToMonth(ordinal))}-${ordinalToYear(ordinal)}`
+export const serialToString = (date: SerialDate) =>
+    `${serialToDayOfMonth(date)}-${monthCodeToString(serialToMonth(date))}-${serialToYear(date)}`
 
-export const compare = (ordinal: SerialDate, other: SerialDate) => ordinal - other
-export const isOn = (ordinal: SerialDate, other: SerialDate) => ordinal === other
-export const isBefore = (ordinal: SerialDate, other: SerialDate) => ordinal < other
-export const isOnOrBefore = (ordinal: SerialDate, other: SerialDate) => ordinal <= other
-export const isAfter = (ordinal: SerialDate, other: SerialDate) => ordinal > other
-export const isOnOrAfter = (ordinal: SerialDate, other: SerialDate) => ordinal >= other
+export const compare = (date: SerialDate, other: SerialDate) => date - other
+export const isOn = (date: SerialDate, other: SerialDate) => date === other
+export const isBefore = (date: SerialDate, other: SerialDate) => date < other
+export const isOnOrBefore = (date: SerialDate, other: SerialDate) => date <= other
+export const isAfter = (date: SerialDate, other: SerialDate) => date > other
+export const isOnOrAfter = (date: SerialDate, other: SerialDate) => date >= other
 
-export const isInRange = (ordinal: SerialDate, d1: SerialDate, d2: SerialDate, interval: DateInterval = DATE_INTERVAL.CLOSED) => {
+export const isInRange = (date: SerialDate, d1: SerialDate, d2: SerialDate, interval: DateInterval = DATE_INTERVAL.CLOSED) => {
     if (!Object.values(DATE_INTERVAL).includes(interval)) throw Error("Invalid date interval!")
     const left = Math.min(d1, d2);
     const right = Math.max(d1, d2);
     const includesLeft = interval === DATE_INTERVAL.CLOSED_LEFT || interval === DATE_INTERVAL.CLOSED;
     const includesRight = interval === DATE_INTERVAL.CLOSED_RIGHT || interval === DATE_INTERVAL.CLOSED;
-    return (includesLeft ? left <= ordinal : left < ordinal) && (includesRight ? ordinal <= right : ordinal < right);
+    return (includesLeft ? left <= date : left < date) && (includesRight ? date <= right : date < right);
 }
