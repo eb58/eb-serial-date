@@ -1,6 +1,6 @@
 # ebSerialDate
 
-Eine kleine JavaScript-Bibliothek für Datumsrechnung mit Tageszahlen, wie sie Tabellenkalkulationen verwenden.
+Eine kleine TypeScript-Bibliothek für Datumsrechnung mit Tageszahlen, wie sie Tabellenkalkulationen verwenden.
 Der 1. Januar 1900 hat die Nummer 2, der 31. Dezember 9999 die Nummer 2958465.
 
 Sie ist eine Neuumsetzung der Klasse `SerialDate` aus der Bibliothek JCommon (David Gilbert), die Robert C. Martin
@@ -33,7 +33,7 @@ isBefore(d(1, MONTHS.JANUARY, 1900), ende)              // true
 | Vergleichen | `compare`, `isOn`, `isBefore`, `isOnOrBefore`, `isAfter`, `isOnOrAfter`, `isInRange` |
 | Kalender | `isLeapYear`, `leapYearCount`, `lastDayOfMonth` |
 | Codes und Namen | `isValidWeekdayCode`, `isValidMonthCode`, `isValidWeekInMonthCode`, `stringToWeekdayCode`, `stringToMonthCode`, `weekdayCodeToString`, `monthCodeToString`, `monthCodeToShortString`, `monthCodeToQuarter`, `getMonths`, `weekInMonthToString`, `relativeToString` |
-| Konstanten | `DAYS`, `MONTHS`, `WEEKCODES`, `RELATIVE`, `DATE_INTERVAL`, `SERIAL_LOWER_BOUND`, `SERIAL_UPPER_BOUND`, `MINIMUM_YEAR_SUPPORTED`, `MAXIMUM_YEAR_SUPPORTED` |
+| Konstanten | `DAYS`, `MONTHS`, `WEEKCODES`, `RELATIVE`, `DATE_INTERVAL`, die Namenslisten `days`, `days2`, `months`, `months2`, `SERIAL_LOWER_BOUND`, `SERIAL_UPPER_BOUND`, `MINIMUM_YEAR_SUPPORTED`, `MAXIMUM_YEAR_SUPPORTED` |
 
 Wochentage laufen von `MONDAY = 1` bis `SUNDAY = 7`, Monate von `JANUARY = 1` bis `DECEMBER = 12`.
 `isInRange(datum, d1, d2, intervall)` kennt die Intervalle `OPEN`, `CLOSED_LEFT`, `CLOSED_RIGHT` und `CLOSED`
@@ -69,7 +69,7 @@ ein ungültiger Monats- oder Wochentagscode und jedes Ergebnis einer Rechnung au
 
 ```
 npm install
-npx jest          # Tests
+npm test          # Tests
 npm run typecheck # Typprüfung mit tsc
 ```
 
@@ -90,7 +90,7 @@ dass zur Laufzeit trotzdem ein Fehler geworfen wird.
 
 Beim Nachbauen sind zwei Dinge aufgefallen.
 
-**Die Lösung kommt mit sehr wenig Code aus.** Ohne Kommentare und Leerzeilen hat `src/serial-date.js` rund 165 Zeilen.
+**Die Lösung kommt mit sehr wenig Code aus.** Ohne Kommentare und Leerzeilen hat `src/serial-date.ts` rund 156 Zeilen.
 Zum Vergleich (grob gezählt):
 
 | Fassung | Zeilen gesamt | davon Code |
@@ -117,13 +117,9 @@ gezählt, nicht aus dem Buch selbst. Die Tests sind nirgends mitgezählt.
 - Die Lokalisierung kostet in Java nur wenige Zeilen (`DateFormatSymbols`), sie macht aber das Verhalten und die
   Tests vom Rechner abhängig.
 
-Einen echten Einwand gibt es gegen ein Datum als nackte Zahl: Verwechslungen wie `addDays(5, 3)` fallen nicht auf. Die
-Typen oben fangen sie ab, ohne dass daraus Klassen werden. Das kostet Typdeklarationen, die sich in dieser Bibliothek
-mit dem Wegfall des früheren `api`-Objekts der JS-Fassung ungefähr ausgleichen, dazu einen Build-Schritt und
-Dev-Abhängigkeiten. Außerdem hatten wir Martins
-Ergebnis, die Originaltests und die Liste der Funktionen schon vor Augen, er hat ein bestehendes Stück Code in kleinen
-Schritten umgebaut. Als Lehrstück über Refaktorieren mit Tests bleibt das Kapitel brauchbar, als Vorbild für die
-Größe einer Lösung weniger.
+Martin kritisiert den Code des Originals gründlich. Sein eigenes Ergebnis ist aber alles andere als optimal, und das
+erwartet man von einem Lehrbuch, das fremden Code zerlegt: Die Klassenhierarchie samt Factories bleibt, und der Code ist
+kaum kürzer geworden. Als Übung im kleinschrittigen Refaktorieren mit Tests ist das Kapitel trotzdem brauchbar.
 
 Wer heute in Java rechnet, nimmt ohnehin `java.time.LocalDate`.
 
