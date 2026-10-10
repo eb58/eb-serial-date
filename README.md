@@ -88,6 +88,14 @@ dass zur Laufzeit trotzdem ein Fehler geworfen wird.
 
 ## Gedanken zum Original und zu Martins Überarbeitung
 
+Der Sinn dieser Übung war zu zeigen, dass sich diese konkrete Aufgabe in TypeScript beziehungsweise JavaScript
+einfacher, kompakter und nach meiner Einschätzung eleganter lösen lässt als in den beiden Java-Fassungen – insbesondere
+als in Martins Überarbeitung. Der Unterschied hängt dabei nicht allein an der Darstellung als Tageszahl. Auch mit einem
+eigenen Datumstyp ließe sich der Code in TypeScript ähnlich direkt aufbauen, ohne dafür eine Klassenhierarchie und
+Factories einzuführen. Beides ist hier für mich Ausdruck einer typischen Krankheit objektorientierten Programmierens:
+Abstraktionen werden vorsorglich für mögliche spätere Anforderungen gebaut, obwohl es dafür keinen konkreten
+Anwendungsfall gibt.
+
 Beim Nachbauen sind zwei Dinge aufgefallen.
 
 **Die Lösung kommt mit sehr wenig Code aus.** Ohne Kommentare und Leerzeilen hat `src/serial-date.ts` rund 156 Zeilen.
@@ -111,9 +119,11 @@ gezählt, nicht aus dem Buch selbst. Die Tests sind nirgends mitgezählt.
 - Eine abstrakte Klasse mit genau einer Unterklasse, dazu zwei Factories, soll austauschbare Datumsarten
   ermöglichen. Eine sinnvolle zweite Art gibt es nicht. Selbst Excels zweites Datumssystem (Start 1904) ließe sich
   mit einer Konstanten abdecken.
-- Martin hat vor allem Kommentare entfernt. Der Code ist von ca. 550 auf ca. 505 Zeilen kaum geschrumpft, obwohl
-  viele Klassen dazukamen.
-- Das Datenmodell, also das Datum als Objekt, stellt er nicht in Frage. Eine Zahl genügt.
+- Martin verbessert Benennung, Zuständigkeiten und Struktur, behebt Fehler und sichert die Änderungen durch Tests ab.
+  Die grundlegende Architektur stellt er dabei jedoch nicht infrage. Dadurch wird der Code verständlicher, aber kaum
+  kleiner.
+- Das objektorientierte Grundmodell mit Klassenhierarchie und Factories stellt er nicht infrage. TypeScript erlaubt
+  hier eine wesentlich direktere Lösung; auch ein eigener Datumstyp würde daran wenig ändern.
 - Die Lokalisierung kostet in Java nur wenige Zeilen (`DateFormatSymbols`), sie macht aber das Verhalten und die
   Tests vom Rechner abhängig.
 
