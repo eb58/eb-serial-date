@@ -88,13 +88,10 @@ dass zur Laufzeit trotzdem ein Fehler geworfen wird.
 
 ## Gedanken zum Original und zu Martins Überarbeitung
 
-Der Sinn dieser Übung war zu zeigen, dass sich diese konkrete Aufgabe in TypeScript beziehungsweise JavaScript
-einfacher, kompakter und nach meiner Einschätzung eleganter lösen lässt als in den beiden Java-Fassungen – insbesondere
-als in Martins Überarbeitung. Der Unterschied hängt dabei nicht allein an der Darstellung als Tageszahl. Auch mit einem
-eigenen Datumstyp ließe sich der Code in TypeScript ähnlich direkt aufbauen, ohne dafür eine Klassenhierarchie und
-Factories einzuführen. Beides ist hier für mich Ausdruck einer typischen Krankheit objektorientierten Programmierens:
-Abstraktionen werden vorsorglich für mögliche spätere Anforderungen gebaut, obwohl es dafür keinen konkreten
-Anwendungsfall gibt.
+Diese Neuumsetzung ist in TypeScript geschrieben, weil ich mit JavaScript und TypeScript besser vertraut bin. Die
+grundlegende Lösung ließe sich jedoch nahezu genauso in Java umsetzen. Der Vergleich soll daher keine Überlegenheit
+einer Sprache zeigen. Er richtet sich gegen den Entwurf von Martins Überarbeitung: Für diese konkrete Aufgabe erzeugen
+Klassenhierarchie und Factories viel Komplexität, ohne einen entsprechenden Nutzen zu bieten.
 
 Beim Nachbauen sind zwei Dinge aufgefallen.
 
