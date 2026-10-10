@@ -106,13 +106,14 @@ export const calcOrdinal = (day: number, month: Month, year: number): SerialDate
     return ordinalOf(day, month, year) as SerialDate;
 }
 
-// accepts a serial number or a js Date
-export const createInstance = (x: number | Date): SerialDate => {
-    const ordinal = x instanceof Date ? calcOrdinal(x.getDate(), (x.getMonth() + 1) as Month, x.getFullYear()) : x;
-    if (ordinal < SERIAL_LOWER_BOUND || ordinal > SERIAL_UPPER_BOUND)
+export const fromSerial = (serial: number): SerialDate => {
+    if (serial < SERIAL_LOWER_BOUND || serial > SERIAL_UPPER_BOUND)
         throw Error("Invalid serial date!")
-    return ordinal as SerialDate
+    return serial as SerialDate
 }
+
+export const fromDate = (date: Date): SerialDate =>
+    calcOrdinal(date.getDate(), (date.getMonth() + 1) as Month, date.getFullYear())
 
 export const ordinalToYear = (ordinal: SerialDate) => {
     let year = MINIMUM_YEAR_SUPPORTED + Math.floor((ordinal - SERIAL_LOWER_BOUND) / 365.25);
@@ -130,7 +131,7 @@ export const ordinalToDayOfMonth = (ordinal: SerialDate) =>
 // 1/1/1900 was a Monday
 export const ordinalToWeekday = (ordinal: SerialDate) => ((ordinal - SERIAL_LOWER_BOUND) % 7 + DAYS.MONDAY) as Weekday
 
-export const addDays = (n: number, ordinal: SerialDate) => createInstance(ordinal + n)
+export const addDays = (n: number, ordinal: SerialDate) => fromSerial(ordinal + n)
 
 export const addMonths = (n: number, ordinal: SerialDate) => {
     const monthsSinceYearZero = ordinalToYear(ordinal) * 12 + (ordinalToMonth(ordinal) - 1) + n;

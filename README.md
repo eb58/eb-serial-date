@@ -30,7 +30,7 @@ isBefore(d(1, MONTHS.JANUARY, 1900), ende)              // true
 
 | Gruppe | Funktionen |
 |---|---|
-| Erzeugen | `calcOrdinal(tag, monat, jahr)`, `createInstance(tageszahl \| Date)` |
+| Erzeugen | `calcOrdinal(tag, monat, jahr)`, `fromSerial(tageszahl)`, `fromDate(Date)` |
 | Zerlegen | `ordinalToYear`, `ordinalToMonth`, `ordinalToDayOfMonth`, `ordinalToWeekday`, `toDate`, `ordinalToString` |
 | Rechnen | `addDays`, `addMonths`, `addYears`, `getEndOfCurrentMonth` |
 | Wochentage | `getPreviousDayOfWeek`, `getFollowingDayOfWeek`, `getNearestDayOfWeek` |
@@ -63,7 +63,7 @@ calcOrdinal(1, 2006, 12)  // Fehler: 2006 ist kein Month
 ```
 
 Die Prüfungen zur Laufzeit bleiben trotzdem, denn JavaScript-Aufrufer sehen die Typen nicht. Ein Datum kommt aus
-`calcOrdinal` oder `createInstance`; wer eine Zahl aus anderer Quelle hat, macht sie mit `createInstance(zahl)` zum
+`calcOrdinal`, `fromSerial` oder `fromDate`; wer eine Zahl aus anderer Quelle hat, macht sie mit `fromSerial(zahl)` zum
 `SerialDate`, und das prüft dabei den Bereich.
 
 Ungültige Werte werfen einen Fehler: ein Tag, den es im Monat nicht gibt, ein Jahr außerhalb von 1900–9999,

@@ -34,7 +34,8 @@ import {
     getEndOfCurrentMonth,
     weekInMonthToString,
     relativeToString,
-    createInstance,
+    fromSerial,
+    fromDate,
     RELATIVE,
     DATE_INTERVAL,
     DateInterval,
@@ -264,7 +265,7 @@ test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth', () => {
 
 test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth roundtrip', () => {
     for (let serial = SERIAL_LOWER_BOUND; serial <= SERIAL_UPPER_BOUND; serial += 97) {
-        const ordinal = createInstance(serial);
+        const ordinal = fromSerial(serial);
         const year = ordinalToYear(ordinal);
         const month = ordinalToMonth(ordinal);
         const day = ordinalToDayOfMonth(ordinal);
@@ -414,7 +415,7 @@ test('testset relativeToString', () => {
     expect(() => relativeToString(2)).toThrow();
 })
 
-test('testset createInstance 1', () => {
+test('testset date parts of a calculated date', () => {
     const date = d(1, MONTHS.JANUARY, 1900);
     assertEquals(1, ordinalToDayOfMonth(date));
     assertEquals(MONTHS.JANUARY, ordinalToMonth(date));
@@ -422,21 +423,23 @@ test('testset createInstance 1', () => {
     assertEquals(2, date);
 })
 
-test('testset createInstance 2', () => {
-    assertEquals(d(1, MONTHS.JANUARY, 1900), createInstance(2));
-    assertEquals(d(1, MONTHS.JANUARY, 1901), createInstance(367));
-    expect(() => createInstance(1)).toThrow();
-    expect(() => createInstance(2958466)).toThrow();
+test('testset fromSerial', () => {
+    assertEquals(d(1, MONTHS.JANUARY, 1900), fromSerial(2));
+    assertEquals(d(1, MONTHS.JANUARY, 1901), fromSerial(367));
+    expect(() => fromSerial(1)).toThrow();
+    expect(() => fromSerial(2958466)).toThrow();
 })
 
-test('testset createInstance 3', () => {
-    assertEquals(d(1, MONTHS.JANUARY, 1900), createInstance(new Date(1900, 0, 1)));
-    assertEquals(d(1, MONTHS.JANUARY, 2006), createInstance(new Date(2006, 0, 1)));
+test('testset fromDate', () => {
+    assertEquals(d(1, MONTHS.JANUARY, 1900), fromDate(new Date(1900, 0, 1)));
+    assertEquals(d(1, MONTHS.JANUARY, 2006), fromDate(new Date(2006, 0, 1)));
+    expect(() => fromDate(new Date(1899, 11, 31))).toThrow();
+    expect(() => fromDate(new Date(10000, 0, 1))).toThrow();
 })
 
 test('serial date survives a JSON roundtrip', () => {
     const date = d(15, MONTHS.APRIL, 2000);
-    assertEquals(date, createInstance(JSON.parse(JSON.stringify(date))));
+    assertEquals(date, fromSerial(JSON.parse(JSON.stringify(date))));
 })
 
 test('testset toDate', () => {
