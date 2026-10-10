@@ -36,6 +36,21 @@ const {
     relativeToString,
     createInstance,
     RELATIVE,
+    DATE_INTERVAL,
+    toDate,
+    ordinalToString,
+    compare,
+    isOn,
+    isBefore,
+    isOnOrBefore,
+    isAfter,
+    isOnOrAfter,
+    isInRange,
+    getMonths,
+    SERIAL_LOWER_BOUND,
+    SERIAL_UPPER_BOUND,
+    MINIMUM_YEAR_SUPPORTED,
+    MAXIMUM_YEAR_SUPPORTED,
 } = require('../src/serial-date')
 
 const d = calcOrdinal
@@ -387,4 +402,134 @@ test('testset createInstance 2', () => {
 test('testset createInstance 3', () => {
     assertEquals(d(1, MONTHS.JANUARY, 1900), createInstance(new Date(1900, 0, 1)));
     assertEquals(d(1, MONTHS.JANUARY, 2006), createInstance(new Date(2006, 0, 1)));
+})
+
+test('testset toDate', () => {
+    expect(toDate(d(1, MONTHS.JANUARY, 1900))).toEqual(new Date(1900, 0, 1));
+    expect(toDate(d(29, MONTHS.FEBRUARY, 2004))).toEqual(new Date(2004, 1, 29));
+    expect(toDate(d(31, MONTHS.DECEMBER, 9999))).toEqual(new Date(9999, 11, 31));
+})
+
+test('testset ordinalToString', () => {
+    assertEquals("1-January-1900", ordinalToString(d(1, MONTHS.JANUARY, 1900)));
+    assertEquals("29-February-2004", ordinalToString(d(29, MONTHS.FEBRUARY, 2004)));
+    assertEquals("31-December-9999", ordinalToString(d(31, MONTHS.DECEMBER, 9999)));
+})
+
+test('testset compare', () => {
+    const d1 = d(1, MONTHS.JANUARY, 2006);
+    const d2 = d(2, MONTHS.JANUARY, 2006);
+    assertTrue(compare(d1, d2) < 0);
+    assertEquals(0, compare(d1, d1));
+    assertTrue(compare(d2, d1) > 0);
+})
+
+test('testset isOn, isBefore, isOnOrBefore, isAfter, isOnOrAfter', () => {
+    const d1 = d(1, MONTHS.JANUARY, 2006);
+    const d2 = d(2, MONTHS.JANUARY, 2006);
+
+    assertTrue(isOn(d1, d1));
+    assertFalse(isOn(d1, d2));
+
+    assertTrue(isBefore(d1, d2));
+    assertFalse(isBefore(d1, d1));
+    assertFalse(isBefore(d2, d1));
+
+    assertTrue(isOnOrBefore(d1, d2));
+    assertTrue(isOnOrBefore(d1, d1));
+    assertFalse(isOnOrBefore(d2, d1));
+
+    assertTrue(isAfter(d2, d1));
+    assertFalse(isAfter(d1, d1));
+    assertFalse(isAfter(d1, d2));
+
+    assertTrue(isOnOrAfter(d2, d1));
+    assertTrue(isOnOrAfter(d1, d1));
+    assertFalse(isOnOrAfter(d1, d2));
+})
+
+test('testset isInRange', () => {
+    const left = d(10, MONTHS.JANUARY, 2006);
+    const middle = d(15, MONTHS.JANUARY, 2006);
+    const right = d(20, MONTHS.JANUARY, 2006);
+    const before = d(9, MONTHS.JANUARY, 2006);
+    const after = d(21, MONTHS.JANUARY, 2006);
+    const check = (interval, expected) => {
+        const [onLeft, inMiddle, onRight] = expected;
+        assertEquals(onLeft, isInRange(left, left, right, interval));
+        assertEquals(inMiddle, isInRange(middle, left, right, interval));
+        assertEquals(onRight, isInRange(right, left, right, interval));
+        assertFalse(isInRange(before, left, right, interval));
+        assertFalse(isInRange(after, left, right, interval));
+    }
+    check(DATE_INTERVAL.OPEN, [false, true, false]);
+    check(DATE_INTERVAL.CLOSED_LEFT, [true, true, false]);
+    check(DATE_INTERVAL.CLOSED_RIGHT, [false, true, true]);
+    check(DATE_INTERVAL.CLOSED, [true, true, true]);
+})
+
+test('testset isInRange with swapped bounds and invalid interval', () => {
+    const left = d(10, MONTHS.JANUARY, 2006);
+    const right = d(20, MONTHS.JANUARY, 2006);
+    assertTrue(isInRange(d(15, MONTHS.JANUARY, 2006), right, left, DATE_INTERVAL.OPEN));
+    assertTrue(isInRange(left, right, left, DATE_INTERVAL.CLOSED_LEFT));
+    expect(() => isInRange(left, left, right, 7)).toThrow();
+})
+
+test('testset isInRange without interval includes both bounds', () => {
+    const left = d(10, MONTHS.JANUARY, 2006);
+    const right = d(20, MONTHS.JANUARY, 2006);
+    assertTrue(isInRange(left, left, right));
+    assertTrue(isInRange(d(15, MONTHS.JANUARY, 2006), right, left));
+    assertTrue(isInRange(right, left, right));
+    assertFalse(isInRange(d(9, MONTHS.JANUARY, 2006), left, right));
+    assertFalse(isInRange(d(21, MONTHS.JANUARY, 2006), left, right));
+})
+
+test('testset getMonths', () => {
+    assertEquals(12, getMonths().length);
+    assertEquals("January", getMonths()[0]);
+    assertEquals("December", getMonths()[11]);
+    assertEquals("January", getMonths(false)[0]);
+    assertEquals("Jan", getMonths(true)[0]);
+    assertEquals("Dec", getMonths(true)[11]);
+})
+
+test('testset stringToMonthCode with numbers', () => {
+    assertEquals(1, stringToMonthCode("1"));
+    assertEquals(9, stringToMonthCode(" 9 "));
+    assertEquals(12, stringToMonthCode("12"));
+    assertEquals(-1, stringToMonthCode("0"));
+    assertEquals(-1, stringToMonthCode("13"));
+    assertEquals(MONTHS.MARCH, stringToMonthCode("Mar"));
+})
+
+test('testset supported bounds', () => {
+    assertEquals(2, SERIAL_LOWER_BOUND);
+    assertEquals(2958465, SERIAL_UPPER_BOUND);
+    assertEquals(1900, MINIMUM_YEAR_SUPPORTED);
+    assertEquals(9999, MAXIMUM_YEAR_SUPPORTED);
+})
+
+test('testset calcOrdinal validates its arguments', () => {
+    expect(() => calcOrdinal(1, MONTHS.JANUARY, 1899)).toThrow();
+    expect(() => calcOrdinal(1, MONTHS.JANUARY, 10000)).toThrow();
+    expect(() => calcOrdinal(1, 0, 2006)).toThrow();
+    expect(() => calcOrdinal(1, 13, 2006)).toThrow();
+    expect(() => calcOrdinal(0, MONTHS.JANUARY, 2006)).toThrow();
+    expect(() => calcOrdinal(32, MONTHS.JANUARY, 2006)).toThrow();
+    expect(() => calcOrdinal(29, MONTHS.FEBRUARY, 1901)).toThrow();
+    expect(() => calcOrdinal(31, MONTHS.APRIL, 2006)).toThrow();
+    expect(() => calcOrdinal(1.5, MONTHS.JANUARY, 2006)).toThrow();
+    assertEquals(SERIAL_LOWER_BOUND, calcOrdinal(1, MONTHS.JANUARY, 1900));
+    assertEquals(SERIAL_UPPER_BOUND, calcOrdinal(31, MONTHS.DECEMBER, 9999));
+    assertTrue(calcOrdinal(29, MONTHS.FEBRUARY, 1904) > 0);
+})
+
+test('testset date arithmetic stays within the supported range', () => {
+    expect(() => addDays(-1, d(1, MONTHS.JANUARY, 1900))).toThrow();
+    expect(() => addDays(1, d(31, MONTHS.DECEMBER, 9999))).toThrow();
+    expect(() => addMonths(1, d(31, MONTHS.DECEMBER, 9999))).toThrow();
+    expect(() => addYears(-1, d(1, MONTHS.JANUARY, 1900))).toThrow();
+    assertEquals(d(31, MONTHS.DECEMBER, 9999), addDays(1, d(30, MONTHS.DECEMBER, 9999)));
 })
