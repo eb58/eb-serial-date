@@ -1,20 +1,10 @@
-const feedX = (x, f) => f(x);
 const jsUpperCaseFirst = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-const DAYS = {MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6, SUNDAY: 7};
-const MONTHS = {
-    JANUARY: 1,
-    FEBRUARY: 2,
-    MARCH: 3,
-    APRIL: 4,
-    MAY: 5,
-    JUNE: 6,
-    JULY: 7,
-    AUGUST: 8,
-    SEPTEMBER: 9,
-    OCTOBER: 10,
-    NOVEMBER: 11,
-    DECEMBER: 12
-};
+const nameToCode = (codes, s) => {
+    const name = Object.keys(codes).find(n => n.toLowerCase().startsWith(s.trim().toLowerCase()));
+    return name ? codes[name] : -1;
+}
+const DAYS = { MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6, SUNDAY: 7 };
+const MONTHS = { JANUARY: 1, FEBRUARY: 2, MARCH: 3, APRIL: 4, MAY: 5, JUNE: 6, JULY: 7, AUGUST: 8, SEPTEMBER: 9, OCTOBER: 10, NOVEMBER: 11, DECEMBER: 12 };
 
 const SERIAL_LOWER_BOUND = 2;     // 1/1/1900
 const SERIAL_UPPER_BOUND = 2958465; // 12/31/9999
@@ -66,8 +56,8 @@ const WEEKCODES = {
     FOURTH_WEEK_IN_MONTH: 4,
     LAST_WEEK_IN_MONTH: 0
 }
-const RELATIVE = {PRECEDING: -1, NEAREST: 0, FOLLOWING: 1}
-const DATE_INTERVAL = {OPEN: 0, CLOSED_LEFT: 1, CLOSED_RIGHT: 2, CLOSED: 3}
+const RELATIVE = { PRECEDING: -1, NEAREST: 0, FOLLOWING: 1 }
+const DATE_INTERVAL = { OPEN: 0, CLOSED_LEFT: 1, CLOSED_RIGHT: 2, CLOSED: 3 }
 
 const api = {
     DAYS,
@@ -94,10 +84,10 @@ const api = {
     isValidMonthCode,
     isValidWeekInMonthCode: (m) => 0 <= m && m <= 4,
 
-    stringToWeekdayCode: s => feedX(api.days.find(day => day.toLowerCase().startsWith(s.toLowerCase())), (x) => x ? DAYS[x] : -1),
+    stringToWeekdayCode: s => nameToCode(DAYS, s),
     stringToMonthCode: s => /^\s*\d+\s*$/.test(s)
         ? (isValidMonthCode(parseInt(s, 10)) ? parseInt(s, 10) : -1)
-        : feedX(api.months.find(month => month.toLowerCase().startsWith(s.trim().toLowerCase())), (x) => x ? MONTHS[x] : -1),
+        : nameToCode(MONTHS, s),
 
     weekdayCodeToString: c => jsUpperCaseFirst(api.days[assertValidWeekdayCode(c) - 1]),
 
