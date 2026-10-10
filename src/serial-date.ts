@@ -117,10 +117,9 @@ export const fromDate = (date: Date): SerialDate =>
     calcSerial(date.getDate(), (date.getMonth() + 1) as Month, date.getFullYear())
 
 export const serialToYear = (date: SerialDate) => {
-    let year = MINIMUM_YEAR_SUPPORTED + Math.floor((date - SERIAL_LOWER_BOUND) / 365.25);
-    while (serialOf(1, MONTHS.JANUARY, year + 1) <= date) year++;
-    while (serialOf(1, MONTHS.JANUARY, year) > date) year--;
-    return year;
+    // the estimate is never too high and at most one year too low (checked for every supported date)
+    const year = MINIMUM_YEAR_SUPPORTED + Math.floor((date - SERIAL_LOWER_BOUND) / 365.25);
+    return serialOf(1, MONTHS.JANUARY, year + 1) <= date ? year + 1 : year;
 }
 export const serialToMonth = (date: SerialDate) => {
     const year = serialToYear(date);

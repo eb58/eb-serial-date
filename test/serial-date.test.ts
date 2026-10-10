@@ -1,46 +1,55 @@
 import {
     Month,
+    Weekday,
+    SerialDate,
+    DateInterval,
     DAYS,
     MONTHS,
     WEEKCODES,
+    RELATIVE,
+    DATE_INTERVAL,
+    SERIAL_LOWER_BOUND,
+    SERIAL_UPPER_BOUND,
+    MINIMUM_YEAR_SUPPORTED,
+    MAXIMUM_YEAR_SUPPORTED,
+    days,
+    months,
 
     isLeapYear,
     leapYearCount,
+    lastDayOfMonth,
 
     isValidWeekdayCode,
     isValidMonthCode,
     isValidWeekInMonthCode,
-
     stringToWeekdayCode,
     stringToMonthCode,
-
-    weekdayCodeToString, 
-    
-    monthCodeToString, 
+    weekdayCodeToString,
+    monthCodeToString,
     monthCodeToShortString,
     monthCodeToQuarter,
-    lastDayOfMonth,
+    getMonths,
+    weekInMonthToString,
+    relativeToString,
+
     calcSerial,
+    fromSerial,
+    fromDate,
     serialToYear,
     serialToMonth,
     serialToDayOfMonth,
+    serialToWeekday,
+    toDate,
+    serialToString,
+
     addDays,
     addMonths,
     addYears,
-    serialToWeekday,
+    getEndOfCurrentMonth,
     getPreviousDayOfWeek,
     getFollowingDayOfWeek,
     getNearestDayOfWeek,
-    getEndOfCurrentMonth,
-    weekInMonthToString,
-    relativeToString,
-    fromSerial,
-    fromDate,
-    RELATIVE,
-    DATE_INTERVAL,
-    DateInterval,
-    toDate,
-    serialToString,
+
     compare,
     isOn,
     isBefore,
@@ -48,39 +57,98 @@ import {
     isAfter,
     isOnOrAfter,
     isInRange,
-    getMonths,
-    days,
-    months,
-    SERIAL_LOWER_BOUND,
-    SERIAL_UPPER_BOUND,
-    MINIMUM_YEAR_SUPPORTED,
-    MAXIMUM_YEAR_SUPPORTED,
 } from '../src/serial-date'
 
 const d = calcSerial
+const { JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER } = MONTHS
+const { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY } = DAYS
 
-const assertEquals = (a: unknown, b: unknown) => expect(a).toBe(b)
-const assertTrue = (a: unknown) => expect(a).toBe(true)
-const assertFalse = (a: unknown) => expect(a).toBe(false)
+// month, name, short name, quarter, days in a common year
+const MONTH_TABLE: [Month, string, string, number, number][] = [
+    [JANUARY, 'January', 'Jan', 1, 31],
+    [FEBRUARY, 'February', 'Feb', 1, 28],
+    [MARCH, 'March', 'Mar', 1, 31],
+    [APRIL, 'April', 'Apr', 2, 30],
+    [MAY, 'May', 'May', 2, 31],
+    [JUNE, 'June', 'Jun', 2, 30],
+    [JULY, 'July', 'Jul', 3, 31],
+    [AUGUST, 'August', 'Aug', 3, 31],
+    [SEPTEMBER, 'September', 'Sep', 3, 30],
+    [OCTOBER, 'October', 'Oct', 4, 31],
+    [NOVEMBER, 'November', 'Nov', 4, 30],
+    [DECEMBER, 'December', 'Dec', 4, 31],
+]
 
-test.each([NaN, Infinity, -Infinity, 1.5, 2.5])('rejects invalid numeric input %s', value => {
-    expect(() => fromSerial(value)).toThrow();
-    expect(isValidWeekdayCode(value)).toBe(false);
-    expect(isValidMonthCode(value)).toBe(false);
-    expect(isValidWeekInMonthCode(value)).toBe(false);
-    const date = d(1, MONTHS.JANUARY, 2000);
-    for (const add of [addDays, addMonths, addYears]) {
-        expect(() => add(value, date)).toThrow();
-    }
+// weekday, name, short name
+const WEEKDAY_TABLE: [Weekday, string, string][] = [
+    [MONDAY, 'Monday', 'Mon'],
+    [TUESDAY, 'Tuesday', 'Tue'],
+    [WEDNESDAY, 'Wednesday', 'Wed'],
+    [THURSDAY, 'Thursday', 'Thu'],
+    [FRIDAY, 'Friday', 'Fri'],
+    [SATURDAY, 'Saturday', 'Sat'],
+    [SUNDAY, 'Sunday', 'Sun'],
+]
+
+// rows of [readable label, offset or weekday, start date, expected date]
+const shift = (n: number, from: SerialDate, expected: SerialDate): [string, number, SerialDate, SerialDate] =>
+    [`${serialToString(from)} ${n >= 0 ? '+' : '-'} ${Math.abs(n)} -> ${serialToString(expected)}`, n, from, expected]
+const toWeekday = (target: Weekday, from: SerialDate, expected: SerialDate): [string, Weekday, SerialDate, SerialDate] =>
+    [`${weekdayCodeToString(target)} from ${serialToString(from)} -> ${serialToString(expected)}`, target, from, expected]
+
+describe('weekday codes', () => {
+    test.each(WEEKDAY_TABLE)('%i is %s / %s', (code, name, short) => {
+        expect(isValidWeekdayCode(code)).toBe(true);
+        expect(weekdayCodeToString(code)).toBe(name);
+        expect(stringToWeekdayCode(name)).toBe(code);
+        expect(stringToWeekdayCode(short)).toBe(code);
+    })
+
+    test('invalid codes and names', () => {
+        expect(isValidWeekdayCode(0)).toBe(false);
+        expect(isValidWeekdayCode(8)).toBe(false);
+        expect(stringToWeekdayCode('Hello')).toBe(-1);
+        expect(stringToWeekdayCode(' Wednesday ')).toBe(WEDNESDAY);
+    })
 })
 
-test('arithmetic rejects fractional offsets even when rounding would hide them', () => {
-    const date = d(1, MONTHS.JANUARY, 2000);
-    expect(() => addDays(Number.EPSILON, date)).toThrow();
-    expect(() => addMonths(Number.EPSILON, date)).toThrow();
-    expect(() => addYears(0.5, date)).toThrow();
-    expect(addMonths(-1, date)).toBe(d(1, MONTHS.DECEMBER, 1999));
-    expect(addYears(-1, date)).toBe(d(1, MONTHS.JANUARY, 1999));
+describe('month codes', () => {
+    test.each(MONTH_TABLE)('%i is %s / %s, quarter %i, %i days', (code, name, short, quarter, daysInMonth) => {
+        expect(isValidMonthCode(code)).toBe(true);
+        expect(monthCodeToString(code)).toBe(name);
+        expect(monthCodeToShortString(code)).toBe(short);
+        expect(monthCodeToQuarter(code)).toBe(quarter);
+        expect(lastDayOfMonth(code, 1901)).toBe(daysInMonth);
+        expect(stringToMonthCode(name)).toBe(code);
+        expect(stringToMonthCode(short)).toBe(code);
+        expect(stringToMonthCode(String(code))).toBe(code);
+        expect(getMonths()[code - 1]).toBe(name);
+        expect(getMonths(true)[code - 1]).toBe(short);
+    })
+
+    test('getMonths returns twelve long names by default', () => {
+        expect(getMonths()).toHaveLength(12);
+        expect(getMonths(false)).toEqual(getMonths());
+    })
+
+    test('stringToMonthCode with numbers and spaces', () => {
+        expect(stringToMonthCode(' 9 ')).toBe(SEPTEMBER);
+        expect(stringToMonthCode(' January ')).toBe(JANUARY);
+        expect(stringToMonthCode('0')).toBe(-1);
+        expect(stringToMonthCode('13')).toBe(-1);
+        expect(stringToMonthCode('Hello')).toBe(-1);
+    })
+
+    test('invalid codes', () => {
+        expect(isValidMonthCode(0)).toBe(false);
+        expect(isValidMonthCode(13)).toBe(false);
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => monthCodeToString(-1)).toThrow();
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => monthCodeToShortString(-1)).toThrow();
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => monthCodeToQuarter(-1)).toThrow();
+    })
 })
 
 test('name parsing accepts only full names and three-letter abbreviations', () => {
@@ -90,546 +158,377 @@ test('name parsing accepts only full names and three-letter abbreviations', () =
     for (const input of ['', '   ', 'T', 'Tu', 'Tues', 'Tuesday!']) {
         expect(stringToWeekdayCode(input)).toBe(-1);
     }
-    expect(stringToMonthCode(' jAn ')).toBe(MONTHS.JANUARY);
-    expect(stringToMonthCode(' JULY ')).toBe(MONTHS.JULY);
-    expect(stringToWeekdayCode(' tHu ')).toBe(DAYS.THURSDAY);
-    expect(stringToWeekdayCode(' MONDAY ')).toBe(DAYS.MONDAY);
+    expect(stringToMonthCode(' jAn ')).toBe(JANUARY);
+    expect(stringToMonthCode(' JULY ')).toBe(JULY);
+    expect(stringToWeekdayCode(' tHu ')).toBe(THURSDAY);
+    expect(stringToWeekdayCode(' MONDAY ')).toBe(MONDAY);
 })
 
-test('fromDate rejects invalid Date objects', () => {
-    expect(() => fromDate(new Date(NaN))).toThrow();
+describe('week in month and relative codes', () => {
+    test.each([
+        [WEEKCODES.FIRST_WEEK_IN_MONTH, 'First'],
+        [WEEKCODES.SECOND_WEEK_IN_MONTH, 'Second'],
+        [WEEKCODES.THIRD_WEEK_IN_MONTH, 'Third'],
+        [WEEKCODES.FOURTH_WEEK_IN_MONTH, 'Fourth'],
+        [WEEKCODES.LAST_WEEK_IN_MONTH, 'Last'],
+    ] as const)('week code %i is %s', (code, name) => {
+        expect(isValidWeekInMonthCode(code)).toBe(true);
+        expect(weekInMonthToString(code)).toBe(name);
+    })
+
+    test.each([
+        [RELATIVE.PRECEDING, 'Preceding'],
+        [RELATIVE.NEAREST, 'Nearest'],
+        [RELATIVE.FOLLOWING, 'Following'],
+    ] as const)('relative code %i is %s', (code, name) => {
+        expect(relativeToString(code)).toBe(name);
+    })
+
+    test('invalid codes', () => {
+        expect(isValidWeekInMonthCode(5)).toBe(false);
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => weekInMonthToString(5)).toThrow();
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => relativeToString(2)).toThrow();
+    })
 })
 
+describe('leap years', () => {
+    test.each([
+        [1900, false], [1901, false], [1902, false], [1903, false], [1904, true], [1908, true],
+        [1955, false], [1964, true], [1980, true], [2000, true], [2001, false], [2100, false],
+    ])('isLeapYear(%i) is %s', (year, expected) => {
+        expect(isLeapYear(year)).toBe(expected);
+    })
 
-test('testset isValidWeekdayCode', () => {
-    for (let day = 1; day <= 7; day++) expect(isValidWeekdayCode(day)).toBe(true);
-    expect(isValidWeekdayCode(0)).toBe(false);
-    expect(isValidWeekdayCode(8)).toBe(false);
+    test.each([
+        [1899, 0], [1900, 0], [1901, 0], [1902, 0], [1903, 0], [1904, 1], [1905, 1], [1906, 1], [1907, 1],
+        [1908, 2], [1999, 24], [2000, 25], [2001, 25], [2101, 49], [2201, 73], [2301, 97], [2401, 122],
+    ])('leapYearCount(%i) is %i', (year, expected) => {
+        expect(leapYearCount(year)).toBe(expected);
+    })
+
+    test('a leap year only changes February', () => {
+        for (const [month, , , , daysInMonth] of MONTH_TABLE) {
+            expect(lastDayOfMonth(month, 1904)).toBe(month === FEBRUARY ? 29 : daysInMonth);
+        }
+    })
 })
 
-test('testset isValidMonthCode', () => {
-    for (let i = 1; i <= 12; i++) assertTrue(isValidMonthCode(i));
-    assertFalse(isValidMonthCode(0));
-    assertFalse(isValidMonthCode(13));
+describe('creating dates', () => {
+    test.each([
+        [1, JANUARY, 1900, 2],
+        [1, FEBRUARY, 1900, 33],
+        [1, MARCH, 1900, 61],
+        [1, JANUARY, 1901, 367],
+        [31, DECEMBER, 9999, 2958465],
+    ] as [number, Month, number, number][])('calcSerial(%i, %i, %i) is %i', (day, month, year, expected) => {
+        expect(calcSerial(day, month, year)).toBe(expected);
+    })
+
+    test('a leap year has 29 days in February and 366 in total', () => {
+        expect(d(1, MARCH, 1904) - d(1, FEBRUARY, 1904)).toBe(29);
+        expect(d(1, JANUARY, 1905) - d(1, JANUARY, 1904)).toBe(366);
+    })
+
+    test.each([
+        [1, JANUARY, 1899],
+        [1, JANUARY, 10000],
+        [0, JANUARY, 2006],
+        [32, JANUARY, 2006],
+        [29, FEBRUARY, 1901],
+        [31, APRIL, 2006],
+        [1.5, JANUARY, 2006],
+    ] as [number, Month, number][])('calcSerial(%s, %i, %s) throws', (day, month, year) => {
+        expect(() => calcSerial(day, month, year)).toThrow();
+    })
+
+    test('calcSerial rejects invalid months', () => {
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => calcSerial(1, 0, 2006)).toThrow();
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => calcSerial(1, 13, 2006)).toThrow();
+        expect(calcSerial(29, FEBRUARY, 1904)).toBeGreaterThan(0);
+    })
+
+    test('fromSerial accepts exactly the supported range', () => {
+        expect(fromSerial(2)).toBe(d(1, JANUARY, 1900));
+        expect(fromSerial(367)).toBe(d(1, JANUARY, 1901));
+        expect(() => fromSerial(1)).toThrow();
+        expect(() => fromSerial(2958466)).toThrow();
+    })
+
+    test('fromDate', () => {
+        expect(fromDate(new Date(1900, 0, 1))).toBe(d(1, JANUARY, 1900));
+        expect(fromDate(new Date(2006, 0, 1))).toBe(d(1, JANUARY, 2006));
+        expect(() => fromDate(new Date(1899, 11, 31))).toThrow();
+        expect(() => fromDate(new Date(10000, 0, 1))).toThrow();
+        expect(() => fromDate(new Date(NaN))).toThrow();
+    })
+
+    test('a serial date survives a JSON roundtrip', () => {
+        const date = d(15, APRIL, 2000);
+        expect(fromSerial(JSON.parse(JSON.stringify(date)))).toBe(date);
+    })
+
+    test.each([NaN, Infinity, -Infinity, 1.5, 2.5])('rejects invalid numeric input %s', value => {
+        expect(() => fromSerial(value)).toThrow();
+        expect(isValidWeekdayCode(value)).toBe(false);
+        expect(isValidMonthCode(value)).toBe(false);
+        expect(isValidWeekInMonthCode(value)).toBe(false);
+        const date = d(1, JANUARY, 2000);
+        for (const add of [addDays, addMonths, addYears]) {
+            expect(() => add(value, date)).toThrow();
+        }
+    })
 })
 
-test('testset testStringToWeekdayCode', () => {
-    expect(stringToWeekdayCode("Hello")).toBe(-1);
-    expect(stringToWeekdayCode("Monday")).toBe(DAYS.MONDAY);
-    expect(stringToWeekdayCode("Mon")).toBe(DAYS.MONDAY);
-    expect(stringToWeekdayCode("Tuesday")).toBe(DAYS.TUESDAY);
-    expect(stringToWeekdayCode("Tue")).toBe(DAYS.TUESDAY);
-    expect(stringToWeekdayCode("Wednesday")).toBe(DAYS.WEDNESDAY);
-    expect(stringToWeekdayCode("Wed")).toBe(DAYS.WEDNESDAY);
-    expect(stringToWeekdayCode("Thursday")).toBe(DAYS.THURSDAY);
-    expect(stringToWeekdayCode("Thu")).toBe(DAYS.THURSDAY);
-    expect(stringToWeekdayCode("Friday")).toBe(DAYS.FRIDAY);
-    expect(stringToWeekdayCode("Fri")).toBe(DAYS.FRIDAY);
-    expect(stringToWeekdayCode("Saturday")).toBe(DAYS.SATURDAY);
-    expect(stringToWeekdayCode("Sat")).toBe(DAYS.SATURDAY);
-    expect(stringToWeekdayCode("Sunday")).toBe(DAYS.SUNDAY);
-    expect(stringToWeekdayCode("Sun")).toBe(DAYS.SUNDAY);
-    expect(stringToWeekdayCode(" Wednesday ")).toBe(DAYS.WEDNESDAY);
-})
-
-test('testset weekdayCodeToString', () => {
-    expect(weekdayCodeToString(DAYS.SUNDAY)).toBe("Sunday");
-    expect(weekdayCodeToString(DAYS.MONDAY)).toBe("Monday");
-    expect(weekdayCodeToString(DAYS.TUESDAY)).toBe("Tuesday");
-    expect(weekdayCodeToString(DAYS.WEDNESDAY)).toBe("Wednesday");
-    expect(weekdayCodeToString(DAYS.THURSDAY)).toBe("Thursday");
-    expect(weekdayCodeToString(DAYS.FRIDAY)).toBe("Friday");
-    expect(weekdayCodeToString(DAYS.SATURDAY)).toBe("Saturday");
-})
-
-
-test('testset monthCodeToQuarter', () => {
-    assertEquals(monthCodeToQuarter(MONTHS.JANUARY), 1);
-    assertEquals(monthCodeToQuarter(MONTHS.FEBRUARY), 1);
-    assertEquals(monthCodeToQuarter(MONTHS.MARCH), 1);
-    assertEquals(monthCodeToQuarter(MONTHS.APRIL), 2);
-    assertEquals(monthCodeToQuarter(MONTHS.MAY), 2);
-    assertEquals(monthCodeToQuarter(MONTHS.JUNE), 2);
-    assertEquals(monthCodeToQuarter(MONTHS.JULY), 3);
-    assertEquals(monthCodeToQuarter(MONTHS.AUGUST), 3);
-    assertEquals(monthCodeToQuarter(MONTHS.SEPTEMBER), 3);
-    assertEquals(monthCodeToQuarter(MONTHS.OCTOBER), 4);
-    assertEquals(monthCodeToQuarter(MONTHS.NOVEMBER), 4);
-    assertEquals(monthCodeToQuarter(MONTHS.DECEMBER), 4);
-
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => monthCodeToQuarter(-1)).toThrow();
-})
-
-test('testset monthCodeToString', () => {
-    assertEquals("January", monthCodeToString(MONTHS.JANUARY));
-    assertEquals("February", monthCodeToString(MONTHS.FEBRUARY));
-    assertEquals("March", monthCodeToString(MONTHS.MARCH));
-    assertEquals("April", monthCodeToString(MONTHS.APRIL));
-    assertEquals("May", monthCodeToString(MONTHS.MAY));
-    assertEquals("June", monthCodeToString(MONTHS.JUNE));
-    assertEquals("July", monthCodeToString(MONTHS.JULY));
-    assertEquals("August", monthCodeToString(MONTHS.AUGUST));
-    assertEquals("September", monthCodeToString(MONTHS.SEPTEMBER));
-    assertEquals("October", monthCodeToString(MONTHS.OCTOBER));
-    assertEquals("November", monthCodeToString(MONTHS.NOVEMBER));
-    assertEquals("December", monthCodeToString(MONTHS.DECEMBER));
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => monthCodeToString(-1)).toThrow();
-})
-
-test('testset monthCodeToShortString', () => {
-    assertEquals("Jan", monthCodeToShortString(MONTHS.JANUARY));
-    assertEquals("Feb", monthCodeToShortString(MONTHS.FEBRUARY));
-    assertEquals("Mar", monthCodeToShortString(MONTHS.MARCH));
-    assertEquals("Apr", monthCodeToShortString(MONTHS.APRIL));
-    assertEquals("May", monthCodeToShortString(MONTHS.MAY));
-    assertEquals("Jun", monthCodeToShortString(MONTHS.JUNE));
-    assertEquals("Jul", monthCodeToShortString(MONTHS.JULY));
-    assertEquals("Aug", monthCodeToShortString(MONTHS.AUGUST));
-    assertEquals("Sep", monthCodeToShortString(MONTHS.SEPTEMBER));
-    assertEquals("Oct", monthCodeToShortString(MONTHS.OCTOBER));
-    assertEquals("Nov", monthCodeToShortString(MONTHS.NOVEMBER));
-    assertEquals("Dec", monthCodeToShortString(MONTHS.DECEMBER));
-
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => monthCodeToShortString(-1)).toThrow();
-})
-
-test('testset isValidWeekInMonthCode', () => {
-    for ( let w = 0; w <= 4; w++) {
-        assertTrue(isValidWeekInMonthCode(w));
-    }
-    assertFalse(isValidWeekInMonthCode(5));
-})
-
-test('testset leapyear', () => {
-    assertFalse(isLeapYear(1900));
-    assertFalse(isLeapYear(1901));
-    assertFalse(isLeapYear(1902));
-    assertFalse(isLeapYear(1903));
-    assertTrue(isLeapYear(1904));
-    assertTrue(isLeapYear(1908));
-    assertFalse(isLeapYear(1955));
-    assertTrue(isLeapYear(1964));
-    assertTrue(isLeapYear(1980));
-    assertTrue(isLeapYear(2000));
-    assertFalse(isLeapYear(2001));
-    assertFalse(isLeapYear(2100));
-})
-
-test('testset leapYearCount', () => {
-    assertEquals(0, leapYearCount(1899));
-    assertEquals(0, leapYearCount(1900));
-    assertEquals(0, leapYearCount(1901));
-    assertEquals(0, leapYearCount(1902));
-    assertEquals(0, leapYearCount(1903));
-    assertEquals(1, leapYearCount(1904));
-    assertEquals(1, leapYearCount(1905));
-    assertEquals(1, leapYearCount(1906));
-    assertEquals(1, leapYearCount(1907));
-    assertEquals(2, leapYearCount(1908));
-    assertEquals(24, leapYearCount(1999));
-    assertEquals(25, leapYearCount(2000));
-    assertEquals(25, leapYearCount(2001));
-    assertEquals(49, leapYearCount(2101));
-    assertEquals(73, leapYearCount(2201));
-    assertEquals(97, leapYearCount(2301));
-    assertEquals(122, leapYearCount(2401));
-})
-
-test('testset lastDayOfMonth', () => {
-
-    assertEquals(31, lastDayOfMonth(MONTHS.JANUARY, 1901));
-    assertEquals(28, lastDayOfMonth(MONTHS.FEBRUARY, 1901));
-    assertEquals(31, lastDayOfMonth(MONTHS.MARCH, 1901));
-    assertEquals(30, lastDayOfMonth(MONTHS.APRIL, 1901));
-    assertEquals(31, lastDayOfMonth(MONTHS.MAY, 1901));
-    assertEquals(30, lastDayOfMonth(MONTHS.JUNE, 1901));
-    assertEquals(31, lastDayOfMonth(MONTHS.JULY, 1901));
-    assertEquals(31, lastDayOfMonth(MONTHS.AUGUST, 1901));
-    assertEquals(30, lastDayOfMonth(MONTHS.SEPTEMBER, 1901));
-    assertEquals(31, lastDayOfMonth(MONTHS.OCTOBER, 1901));
-    assertEquals(30, lastDayOfMonth(MONTHS.NOVEMBER, 1901));
-    assertEquals(31, lastDayOfMonth(MONTHS.DECEMBER, 1901));
-    assertEquals(29, lastDayOfMonth(MONTHS.FEBRUARY, 1904));
-})
-
-test('testset lastDayOfMonth in leap year only changes february', () => {
-    assertEquals(31, lastDayOfMonth(MONTHS.JANUARY, 1904));
-    assertEquals(31, lastDayOfMonth(MONTHS.MARCH, 1904));
-    assertEquals(30, lastDayOfMonth(MONTHS.APRIL, 1904));
-    assertEquals(31, lastDayOfMonth(MONTHS.DECEMBER, 1904));
-})
-
-test('testset calcSerial', () => {
-    assertEquals(2, calcSerial(1, MONTHS.JANUARY, 1900));
-    assertEquals(33, calcSerial(1, MONTHS.FEBRUARY, 1900));
-    assertEquals(61, calcSerial(1, MONTHS.MARCH, 1900));
-    assertEquals(367, calcSerial(1, MONTHS.JANUARY, 1901));
-    assertEquals(2958465, calcSerial(31, MONTHS.DECEMBER, 9999));
-})
-
-test('testset calcSerial in leap year', () => {
-    // 1904 is the first leap year after 1900
-    assertEquals(calcSerial(1, MONTHS.MARCH, 1904) - calcSerial(1, MONTHS.FEBRUARY, 1904), 29);
-    assertEquals(calcSerial(1, MONTHS.JANUARY, 1905) - calcSerial(1, MONTHS.JANUARY, 1904), 366);
-})
-
-test('testset addDays', () => {
-    const newYear1900 = d(1, MONTHS.JANUARY, 1900);
-    assertEquals(d(2, MONTHS.JANUARY, 1900), addDays(1, newYear1900));
-    assertEquals(d(1, MONTHS.FEBRUARY, 1900), addDays(31, newYear1900));
-    assertEquals(d(1, MONTHS.JANUARY, 1901), addDays(365, newYear1900));
-    assertEquals(d(31, MONTHS.DECEMBER, 1904), addDays(5 * 365, newYear1900));
-})
-
-
-test('testset serialToYear, serialToMonth, serialToDayOfMonth', () => {
-    const check = (day: number, month: Month, year: number) => {
+describe('date parts', () => {
+    test.each([
+        [1, JANUARY, 1900],
+        [28, FEBRUARY, 1900],
+        [1, MARCH, 1900],
+        [29, FEBRUARY, 1904],
+        [31, DECEMBER, 1904],
+        [1, JANUARY, 1905],
+        [31, DECEMBER, 2006],
+        [31, DECEMBER, 9999],
+    ] as [number, Month, number][])('%i.%i.%i', (day, month, year) => {
         const date = d(day, month, year);
-        assertEquals(year, serialToYear(date));
-        assertEquals(month, serialToMonth(date));
-        assertEquals(day, serialToDayOfMonth(date));
-    }
-    check(1, MONTHS.JANUARY, 1900);
-    check(28, MONTHS.FEBRUARY, 1900);
-    check(1, MONTHS.MARCH, 1900);
-    check(29, MONTHS.FEBRUARY, 1904);
-    check(31, MONTHS.DECEMBER, 1904);
-    check(1, MONTHS.JANUARY, 1905);
-    check(31, MONTHS.DECEMBER, 2006);
-    check(31, MONTHS.DECEMBER, 9999);
+        expect(serialToYear(date)).toBe(year);
+        expect(serialToMonth(date)).toBe(month);
+        expect(serialToDayOfMonth(date)).toBe(day);
+    })
+
+    test('serialToYear is exact at every year boundary', () => {
+        for (let year = MINIMUM_YEAR_SUPPORTED; year <= MAXIMUM_YEAR_SUPPORTED; year++) {
+            expect(serialToYear(d(1, JANUARY, year))).toBe(year);
+            expect(serialToYear(d(31, DECEMBER, year))).toBe(year);
+        }
+    })
+
+    test('roundtrip over the whole range', () => {
+        for (let serial = SERIAL_LOWER_BOUND; serial <= SERIAL_UPPER_BOUND; serial += 97) {
+            const date = fromSerial(serial);
+            const year = serialToYear(date);
+            const month = serialToMonth(date);
+            const day = serialToDayOfMonth(date);
+            expect(d(day, month, year)).toBe(date);
+            expect(day).toBeGreaterThanOrEqual(1);
+            expect(day).toBeLessThanOrEqual(lastDayOfMonth(month, year));
+        }
+    })
+
+    test.each([
+        [d(1, JANUARY, 1900), MONDAY],
+        [d(7, JANUARY, 1900), SUNDAY],
+        [d(1, MARCH, 2006), WEDNESDAY],
+        [d(16, APRIL, 2006), SUNDAY],
+    ])('serialToWeekday(%i) is %i', (date, weekday) => {
+        expect(serialToWeekday(date)).toBe(weekday);
+    })
+
+    test.each([
+        [d(1, JANUARY, 1900), new Date(1900, 0, 1), '1-January-1900'],
+        [d(29, FEBRUARY, 2004), new Date(2004, 1, 29), '29-February-2004'],
+        [d(31, DECEMBER, 9999), new Date(9999, 11, 31), '31-December-9999'],
+    ])('%i is %s', (date, jsDate, text) => {
+        expect(toDate(date)).toEqual(jsDate);
+        expect(serialToString(date)).toBe(text);
+    })
 })
 
-test('testset serialToYear, serialToMonth, serialToDayOfMonth roundtrip', () => {
-    for (let serial = SERIAL_LOWER_BOUND; serial <= SERIAL_UPPER_BOUND; serial += 97) {
-        const date = fromSerial(serial);
-        const year = serialToYear(date);
-        const month = serialToMonth(date);
-        const day = serialToDayOfMonth(date);
-        assertEquals(date, d(day, month, year));
-        assertTrue(day >= 1 && day <= lastDayOfMonth(month, year));
-    }
+describe('arithmetic', () => {
+    test.each([
+        shift(1, d(1, JANUARY, 1900), d(2, JANUARY, 1900)),
+        shift(31, d(1, JANUARY, 1900), d(1, FEBRUARY, 1900)),
+        shift(365, d(1, JANUARY, 1900), d(1, JANUARY, 1901)),
+        shift(5 * 365, d(1, JANUARY, 1900), d(31, DECEMBER, 1904)),
+        shift(1, d(30, DECEMBER, 9999), d(31, DECEMBER, 9999)),
+    ])('addDays: %s', (_, n, from, expected) => {
+        expect(addDays(n, from)).toBe(expected);
+    })
+
+    test.each([
+        shift(1, d(1, JANUARY, 1900), d(1, FEBRUARY, 1900)),
+        shift(1, d(31, JANUARY, 1900), d(28, FEBRUARY, 1900)),
+        shift(1, d(30, JANUARY, 1900), d(28, FEBRUARY, 1900)),
+        shift(1, d(29, JANUARY, 1900), d(28, FEBRUARY, 1900)),
+        shift(1, d(28, JANUARY, 1900), d(28, FEBRUARY, 1900)),
+        shift(1, d(27, JANUARY, 1900), d(27, FEBRUARY, 1900)),
+        shift(5, d(31, JANUARY, 1900), d(30, JUNE, 1900)),
+        shift(17, d(31, JANUARY, 1900), d(30, JUNE, 1901)),
+        shift(49, d(31, JANUARY, 1900), d(29, FEBRUARY, 1904)),
+        shift(2, d(9, NOVEMBER, 2001), d(9, JANUARY, 2002)),
+        shift(2, d(5, OCTOBER, 2003), d(5, DECEMBER, 2003)),
+        shift(0, d(1, JANUARY, 2003), d(1, JANUARY, 2003)),
+        shift(1, d(31, MAY, 2004), d(30, JUNE, 2004)),
+        shift(2, d(31, MAY, 2004), d(31, JULY, 2004)),
+        shift(-1, d(1, JANUARY, 2000), d(1, DECEMBER, 1999)),
+    ])('addMonths: %s', (_, n, from, expected) => {
+        expect(addMonths(n, from)).toBe(expected);
+    })
+
+    test('addMonths caps the day, so two single steps differ from one double step', () => {
+        const may31 = d(31, MAY, 2004);
+        expect(addMonths(1, addMonths(1, may31))).toBe(d(30, JULY, 2004));
+    })
+
+    test.each([
+        shift(1, d(1, JANUARY, 1900), d(1, JANUARY, 1901)),
+        shift(1, d(29, FEBRUARY, 1904), d(28, FEBRUARY, 1905)),
+        shift(1, d(28, FEBRUARY, 1904), d(28, FEBRUARY, 1905)),
+        shift(1, d(28, FEBRUARY, 1903), d(28, FEBRUARY, 1904)),
+        shift(-1, d(1, JANUARY, 2000), d(1, JANUARY, 1999)),
+    ])('addYears: %s', (_, n, from, expected) => {
+        expect(addYears(n, from)).toBe(expected);
+    })
+
+    test.each(MONTH_TABLE)('end of month %i in 2006', (month, _name, _short, _quarter, daysInMonth) => {
+        expect(getEndOfCurrentMonth(d(1, month, 2006))).toBe(d(daysInMonth, month, 2006));
+    })
+
+    test('end of February in a leap year', () => {
+        expect(getEndOfCurrentMonth(d(1, FEBRUARY, 2008))).toBe(d(29, FEBRUARY, 2008));
+    })
+
+    test('results stay within the supported range', () => {
+        expect(() => addDays(-1, d(1, JANUARY, 1900))).toThrow();
+        expect(() => addDays(1, d(31, DECEMBER, 9999))).toThrow();
+        expect(() => addMonths(1, d(31, DECEMBER, 9999))).toThrow();
+        expect(() => addYears(-1, d(1, JANUARY, 1900))).toThrow();
+    })
+
+    test('fractional offsets are rejected even when rounding would hide them', () => {
+        const date = d(1, JANUARY, 2000);
+        expect(() => addDays(Number.EPSILON, date)).toThrow();
+        expect(() => addMonths(Number.EPSILON, date)).toThrow();
+        expect(() => addYears(0.5, date)).toThrow();
+    })
 })
 
-test('testset addMonths', () => {
-    assertEquals(d(1, MONTHS.FEBRUARY, 1900), addMonths(1, d(1, MONTHS.JANUARY, 1900)));
-    assertEquals(d(28, MONTHS.FEBRUARY, 1900), addMonths(1, d(31, MONTHS.JANUARY, 1900)));
-    assertEquals(d(28, MONTHS.FEBRUARY, 1900), addMonths(1, d(30, MONTHS.JANUARY, 1900)));
-    assertEquals(d(28, MONTHS.FEBRUARY, 1900), addMonths(1, d(29, MONTHS.JANUARY, 1900)));
-    assertEquals(d(28, MONTHS.FEBRUARY, 1900), addMonths(1, d(28, MONTHS.JANUARY, 1900)));
-    assertEquals(d(27, MONTHS.FEBRUARY, 1900), addMonths(1, d(27, MONTHS.JANUARY, 1900)));
+describe('weekdays', () => {
+    test.each([
+        toWeekday(FRIDAY, d(1, MARCH, 2006), d(24, FEBRUARY, 2006)),
+        toWeekday(WEDNESDAY, d(1, MARCH, 2006), d(22, FEBRUARY, 2006)),
+        toWeekday(SUNDAY, d(3, MARCH, 2004), d(29, FEBRUARY, 2004)),
+        toWeekday(WEDNESDAY, d(5, JANUARY, 2005), d(29, DECEMBER, 2004)),
+        toWeekday(MONDAY, d(9, NOVEMBER, 2001), d(5, NOVEMBER, 2001)),
+    ])('previous %s', (_, target, from, expected) => {
+        expect(getPreviousDayOfWeek(target, from)).toBe(expected);
+    })
 
-    assertEquals(d(30, MONTHS.JUNE, 1900), addMonths(5, d(31, MONTHS.JANUARY, 1900)));
-    assertEquals(d(30, MONTHS.JUNE, 1901), addMonths(17, d(31, MONTHS.JANUARY, 1900)));
+    test.each([
+        toWeekday(SATURDAY, d(26, DECEMBER, 2004), d(1, JANUARY, 2005)),
+        toWeekday(WEDNESDAY, d(28, FEBRUARY, 2004), d(3, MARCH, 2004)),
+        toWeekday(MONDAY, d(9, NOVEMBER, 2001), d(12, NOVEMBER, 2001)),
+    ])('following %s', (_, target, from, expected) => {
+        expect(getFollowingDayOfWeek(target, from)).toBe(expected);
+    })
 
-    assertEquals(d(29, MONTHS.FEBRUARY, 1904), addMonths(49, d(31, MONTHS.JANUARY, 1900)));
+    // target weekday, start day and expected day, all in April 2006 (16 April was a Sunday)
+    const NEAREST_IN_APRIL_2006: [Weekday, number, number][] = [
+        [SUNDAY, 16, 16], [SUNDAY, 17, 16], [SUNDAY, 18, 16], [SUNDAY, 19, 16],
+        [SUNDAY, 20, 23], [SUNDAY, 21, 23], [SUNDAY, 22, 23],
+        [MONDAY, 17, 17], [MONDAY, 18, 17], [MONDAY, 19, 17], [MONDAY, 20, 17], [MONDAY, 21, 24], [MONDAY, 22, 24],
+        [TUESDAY, 18, 18], [TUESDAY, 19, 18], [TUESDAY, 20, 18], [TUESDAY, 21, 18], [TUESDAY, 22, 25],
+        [WEDNESDAY, 19, 19], [WEDNESDAY, 20, 19], [WEDNESDAY, 21, 19], [WEDNESDAY, 22, 19],
+        [THURSDAY, 20, 20], [THURSDAY, 21, 20], [THURSDAY, 22, 20],
+        [FRIDAY, 21, 21], [FRIDAY, 22, 21],
+        [SATURDAY, 22, 22],
+    ]
+    test.each([
+        ...NEAREST_IN_APRIL_2006.map(([target, from, expected]) => toWeekday(target, d(from, APRIL, 2006), d(expected, APRIL, 2006))),
+        toWeekday(MONDAY, d(9, NOVEMBER, 2001), d(12, NOVEMBER, 2001)),
+        toWeekday(MONDAY, d(22, JANUARY, 1970), d(19, JANUARY, 1970)),
+    ])('nearest %s', (_, target, from, expected) => {
+        expect(getNearestDayOfWeek(target, from)).toBe(expected);
+    })
 
-    assertEquals(d(9, MONTHS.JANUARY, 2002), addMonths(2, d(9, MONTHS.NOVEMBER, 2001)));
-    assertEquals(d(5, MONTHS.DECEMBER, 2003), addMonths(2, d(5, MONTHS.OCTOBER, 2003)));
-    assertEquals(d(1, MONTHS.JANUARY, 2003), addMonths(0, d(1, MONTHS.JANUARY, 2003)));
-
-    const may31 = d(31, MONTHS.MAY, 2004);
-    assertEquals(d(30, MONTHS.JUNE, 2004), addMonths(1, may31));
-    assertEquals(d(31, MONTHS.JULY, 2004), addMonths(2, may31));
-    assertEquals(d(30, MONTHS.JULY, 2004), addMonths(1, addMonths(1, may31)));
-
+    test('invalid target weekdays', () => {
+        const date = d(1, JANUARY, 2006);
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => getPreviousDayOfWeek(-1, date)).toThrow();
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => getFollowingDayOfWeek(-1, date)).toThrow();
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => getNearestDayOfWeek(-1, date)).toThrow();
+    })
 })
 
-test('testset addYears', () => {
+describe('comparisons', () => {
+    const earlier = d(1, JANUARY, 2006);
+    const later = d(2, JANUARY, 2006);
 
-    assertEquals(d(1, MONTHS.JANUARY, 1901), addYears(1, d(1, MONTHS.JANUARY, 1900)));
-    assertEquals(d(28, MONTHS.FEBRUARY, 1905), addYears(1, d(29, MONTHS.FEBRUARY, 1904)));
-    assertEquals(d(28, MONTHS.FEBRUARY, 1905), addYears(1, d(28, MONTHS.FEBRUARY, 1904)));
-    assertEquals(d(28, MONTHS.FEBRUARY, 1904), addYears(1, d(28, MONTHS.FEBRUARY, 1903)));
+    test('compare returns the difference in days', () => {
+        expect(compare(earlier, later)).toBe(-1);
+        expect(compare(earlier, earlier)).toBe(0);
+        expect(compare(later, earlier)).toBe(1);
+    })
+
+    // results for (same, same), (earlier, later), (later, earlier)
+    test.each([
+        ['isOn', isOn, [true, false, false]],
+        ['isBefore', isBefore, [false, true, false]],
+        ['isOnOrBefore', isOnOrBefore, [true, true, false]],
+        ['isAfter', isAfter, [false, false, true]],
+        ['isOnOrAfter', isOnOrAfter, [true, false, true]],
+    ] as [string, (a: SerialDate, b: SerialDate) => boolean, boolean[]][])('%s', (_, fn, [same, forward, backward]) => {
+        expect(fn(earlier, earlier)).toBe(same);
+        expect(fn(earlier, later)).toBe(forward);
+        expect(fn(later, earlier)).toBe(backward);
+    })
+
+    const left = d(10, JANUARY, 2006);
+    const middle = d(15, JANUARY, 2006);
+    const right = d(20, JANUARY, 2006);
+    const before = d(9, JANUARY, 2006);
+    const after = d(21, JANUARY, 2006);
+
+    // results for left bound, middle and right bound
+    test.each([
+        ['OPEN', DATE_INTERVAL.OPEN, [false, true, false]],
+        ['CLOSED_LEFT', DATE_INTERVAL.CLOSED_LEFT, [true, true, false]],
+        ['CLOSED_RIGHT', DATE_INTERVAL.CLOSED_RIGHT, [false, true, true]],
+        ['CLOSED', DATE_INTERVAL.CLOSED, [true, true, true]],
+    ] as [string, DateInterval, boolean[]][])('isInRange %s', (_, interval, [onLeft, inMiddle, onRight]) => {
+        expect(isInRange(left, left, right, interval)).toBe(onLeft);
+        expect(isInRange(middle, left, right, interval)).toBe(inMiddle);
+        expect(isInRange(right, left, right, interval)).toBe(onRight);
+        expect(isInRange(before, left, right, interval)).toBe(false);
+        expect(isInRange(after, left, right, interval)).toBe(false);
+        expect(isInRange(middle, right, left, interval)).toBe(true);
+    })
+
+    test('isInRange with swapped bounds, default interval and invalid interval', () => {
+        expect(isInRange(left, right, left, DATE_INTERVAL.CLOSED_LEFT)).toBe(true);
+        expect(isInRange(left, left, right)).toBe(true);
+        expect(isInRange(right, left, right)).toBe(true);
+        expect(isInRange(before, left, right)).toBe(false);
+        expect(isInRange(after, left, right)).toBe(false);
+        // @ts-expect-error invalid code is rejected by the compiler and at runtime
+        expect(() => isInRange(left, left, right, 7)).toThrow();
+    })
 })
 
-test('testset serialToWeekday', () => {
-    assertEquals(DAYS.MONDAY, serialToWeekday(d(1, MONTHS.JANUARY, 1900)));
-    assertEquals(DAYS.SUNDAY, serialToWeekday(d(7, MONTHS.JANUARY, 1900)));
-    assertEquals(DAYS.WEDNESDAY, serialToWeekday(d(1, MONTHS.MARCH, 2006)));
-    assertEquals(DAYS.SUNDAY, serialToWeekday(d(16, MONTHS.APRIL, 2006)));
-})
+describe('constants and exports', () => {
+    test('supported bounds', () => {
+        expect(SERIAL_LOWER_BOUND).toBe(2);
+        expect(SERIAL_UPPER_BOUND).toBe(2958465);
+        expect(MINIMUM_YEAR_SUPPORTED).toBe(1900);
+        expect(MAXIMUM_YEAR_SUPPORTED).toBe(9999);
+        expect(d(1, JANUARY, MINIMUM_YEAR_SUPPORTED)).toBe(SERIAL_LOWER_BOUND);
+        expect(d(31, DECEMBER, MAXIMUM_YEAR_SUPPORTED)).toBe(SERIAL_UPPER_BOUND);
+    })
 
-test('testset getPreviousDayOfWeek', () => {
-
-    assertEquals(d(24, MONTHS.FEBRUARY, 2006), getPreviousDayOfWeek(DAYS.FRIDAY, d(1, MONTHS.MARCH, 2006)));
-    assertEquals(d(22, MONTHS.FEBRUARY, 2006), getPreviousDayOfWeek(DAYS.WEDNESDAY, d(1, MONTHS.MARCH, 2006)));
-    assertEquals(d(29, MONTHS.FEBRUARY, 2004), getPreviousDayOfWeek(DAYS.SUNDAY, d(3, MONTHS.MARCH, 2004)));
-    assertEquals(d(29, MONTHS.DECEMBER, 2004), getPreviousDayOfWeek(DAYS.WEDNESDAY, d(5, MONTHS.JANUARY, 2005)));
-
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => getPreviousDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
-})
-
-test('testset getFollowingDayOfWeek', () => {
-    assertEquals(d(1, MONTHS.JANUARY, 2005), getFollowingDayOfWeek(DAYS.SATURDAY, d(26, MONTHS.DECEMBER, 2004)));
-    assertEquals(d(3, MONTHS.MARCH, 2004), getFollowingDayOfWeek(DAYS.WEDNESDAY, d(28, MONTHS.FEBRUARY, 2004)));
-
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => getFollowingDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
-})
-
-test('testset getNearestDayOfWeek', () => {
-
-    assertEquals(d(16, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SUNDAY, d(16, MONTHS.APRIL, 2006)));
-    assertEquals(d(16, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SUNDAY, d(17, MONTHS.APRIL, 2006)));
-    assertEquals(d(16, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SUNDAY, d(18, MONTHS.APRIL, 2006)));
-    assertEquals(d(16, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SUNDAY, d(19, MONTHS.APRIL, 2006)));
-    assertEquals(d(23, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SUNDAY, d(20, MONTHS.APRIL, 2006)));
-    assertEquals(d(23, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SUNDAY, d(21, MONTHS.APRIL, 2006)));
-    assertEquals(d(23, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SUNDAY, d(22, MONTHS.APRIL, 2006)));
-
-    assertEquals(d(17, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.MONDAY, d(17, MONTHS.APRIL, 2006)));
-    assertEquals(d(17, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.MONDAY, d(18, MONTHS.APRIL, 2006)));
-    assertEquals(d(17, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.MONDAY, d(19, MONTHS.APRIL, 2006)));
-    assertEquals(d(17, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.MONDAY, d(20, MONTHS.APRIL, 2006)));
-    assertEquals(d(24, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.MONDAY, d(21, MONTHS.APRIL, 2006)));
-    assertEquals(d(24, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.MONDAY, d(22, MONTHS.APRIL, 2006)));
-
-    assertEquals(d(18, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.TUESDAY, d(18, MONTHS.APRIL, 2006)));
-    assertEquals(d(18, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.TUESDAY, d(19, MONTHS.APRIL, 2006)));
-    assertEquals(d(18, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.TUESDAY, d(20, MONTHS.APRIL, 2006)));
-    assertEquals(d(18, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.TUESDAY, d(21, MONTHS.APRIL, 2006)));
-    assertEquals(d(25, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.TUESDAY, d(22, MONTHS.APRIL, 2006)));
-
-    assertEquals(d(19, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.WEDNESDAY, d(19, MONTHS.APRIL, 2006)));
-    assertEquals(d(19, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.WEDNESDAY, d(20, MONTHS.APRIL, 2006)));
-    assertEquals(d(19, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.WEDNESDAY, d(21, MONTHS.APRIL, 2006)));
-    assertEquals(d(19, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.WEDNESDAY, d(22, MONTHS.APRIL, 2006)));
-
-    assertEquals(d(20, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.THURSDAY, d(20, MONTHS.APRIL, 2006)));
-    assertEquals(d(20, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.THURSDAY, d(21, MONTHS.APRIL, 2006)));
-    assertEquals(d(20, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.THURSDAY, d(22, MONTHS.APRIL, 2006)));
-
-    assertEquals(d(21, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.FRIDAY, d(21, MONTHS.APRIL, 2006)));
-    assertEquals(d(21, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.FRIDAY, d(22, MONTHS.APRIL, 2006)));
-
-    assertEquals(d(22, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SATURDAY, d(22, MONTHS.APRIL, 2006)));
-
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => getNearestDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
-})
-
-test('weekday calculations from the original JCommon tests', () => {
-    const november9 = d(9, MONTHS.NOVEMBER, 2001);
-    assertEquals(d(5, MONTHS.NOVEMBER, 2001), getPreviousDayOfWeek(DAYS.MONDAY, november9));
-    assertEquals(d(12, MONTHS.NOVEMBER, 2001), getFollowingDayOfWeek(DAYS.MONDAY, november9));
-    assertEquals(d(12, MONTHS.NOVEMBER, 2001), getNearestDayOfWeek(DAYS.MONDAY, november9));
-    assertEquals(d(19, MONTHS.JANUARY, 1970), getNearestDayOfWeek(DAYS.MONDAY, d(22, MONTHS.JANUARY, 1970)));
-})
-
-test('testset getEndOfCurrentMonth', () => {
-    assertEquals(d(31, MONTHS.JANUARY, 2006), getEndOfCurrentMonth(d(1, MONTHS.JANUARY, 2006)));
-    assertEquals(d(28, MONTHS.FEBRUARY, 2006), getEndOfCurrentMonth(d(1, MONTHS.FEBRUARY, 2006)));
-    assertEquals(d(31, MONTHS.MARCH, 2006), getEndOfCurrentMonth(d(1, MONTHS.MARCH, 2006)));
-    assertEquals(d(30, MONTHS.APRIL, 2006), getEndOfCurrentMonth(d(1, MONTHS.APRIL, 2006)));
-    assertEquals(d(31, MONTHS.MAY, 2006), getEndOfCurrentMonth(d(1, MONTHS.MAY, 2006)));
-    assertEquals(d(30, MONTHS.JUNE, 2006), getEndOfCurrentMonth(d(1, MONTHS.JUNE, 2006)));
-    assertEquals(d(31, MONTHS.JULY, 2006), getEndOfCurrentMonth(d(1, MONTHS.JULY, 2006)));
-    assertEquals(d(31, MONTHS.AUGUST, 2006), getEndOfCurrentMonth(d(1, MONTHS.AUGUST, 2006)));
-    assertEquals(d(30, MONTHS.SEPTEMBER, 2006), getEndOfCurrentMonth(d(1, MONTHS.SEPTEMBER, 2006)));
-    assertEquals(d(31, MONTHS.OCTOBER, 2006), getEndOfCurrentMonth(d(1, MONTHS.OCTOBER, 2006)));
-    assertEquals(d(30, MONTHS.NOVEMBER, 2006), getEndOfCurrentMonth(d(1, MONTHS.NOVEMBER, 2006)));
-    assertEquals(d(31, MONTHS.DECEMBER, 2006), getEndOfCurrentMonth(d(1, MONTHS.DECEMBER, 2006)));
-    assertEquals(d(29, MONTHS.FEBRUARY, 2008), getEndOfCurrentMonth(d(1, MONTHS.FEBRUARY, 2008)));
-})
-
-test('testset weekInMonthToString', () => {
-    assertEquals("First", weekInMonthToString(WEEKCODES.FIRST_WEEK_IN_MONTH));
-    assertEquals("Second", weekInMonthToString(WEEKCODES.SECOND_WEEK_IN_MONTH));
-    assertEquals("Third", weekInMonthToString(WEEKCODES.THIRD_WEEK_IN_MONTH));
-    assertEquals("Fourth", weekInMonthToString(WEEKCODES.FOURTH_WEEK_IN_MONTH));
-    assertEquals("Last", weekInMonthToString(WEEKCODES.LAST_WEEK_IN_MONTH));
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => weekInMonthToString(5)).toThrow();
-})
-
-test('testset relativeToString', () => {
-    assertEquals("Preceding", relativeToString(RELATIVE.PRECEDING));
-    assertEquals("Nearest", relativeToString(RELATIVE.NEAREST));
-    assertEquals("Following", relativeToString(RELATIVE.FOLLOWING));
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => relativeToString(2)).toThrow();
-})
-
-test('testset date parts of a calculated date', () => {
-    const date = d(1, MONTHS.JANUARY, 1900);
-    assertEquals(1, serialToDayOfMonth(date));
-    assertEquals(MONTHS.JANUARY, serialToMonth(date));
-    assertEquals(1900, serialToYear(date));
-    assertEquals(2, date);
-})
-
-test('testset fromSerial', () => {
-    assertEquals(d(1, MONTHS.JANUARY, 1900), fromSerial(2));
-    assertEquals(d(1, MONTHS.JANUARY, 1901), fromSerial(367));
-    expect(() => fromSerial(1)).toThrow();
-    expect(() => fromSerial(2958466)).toThrow();
-})
-
-test('testset fromDate', () => {
-    assertEquals(d(1, MONTHS.JANUARY, 1900), fromDate(new Date(1900, 0, 1)));
-    assertEquals(d(1, MONTHS.JANUARY, 2006), fromDate(new Date(2006, 0, 1)));
-    expect(() => fromDate(new Date(1899, 11, 31))).toThrow();
-    expect(() => fromDate(new Date(10000, 0, 1))).toThrow();
-})
-
-test('serial date survives a JSON roundtrip', () => {
-    const date = d(15, MONTHS.APRIL, 2000);
-    assertEquals(date, fromSerial(JSON.parse(JSON.stringify(date))));
-})
-
-test('testset toDate', () => {
-    expect(toDate(d(1, MONTHS.JANUARY, 1900))).toEqual(new Date(1900, 0, 1));
-    expect(toDate(d(29, MONTHS.FEBRUARY, 2004))).toEqual(new Date(2004, 1, 29));
-    expect(toDate(d(31, MONTHS.DECEMBER, 9999))).toEqual(new Date(9999, 11, 31));
-})
-
-test('testset serialToString', () => {
-    assertEquals("1-January-1900", serialToString(d(1, MONTHS.JANUARY, 1900)));
-    assertEquals("29-February-2004", serialToString(d(29, MONTHS.FEBRUARY, 2004)));
-    assertEquals("31-December-9999", serialToString(d(31, MONTHS.DECEMBER, 9999)));
-})
-
-test('testset compare', () => {
-    const d1 = d(1, MONTHS.JANUARY, 2006);
-    const d2 = d(2, MONTHS.JANUARY, 2006);
-    assertTrue(compare(d1, d2) < 0);
-    assertEquals(0, compare(d1, d1));
-    assertTrue(compare(d2, d1) > 0);
-})
-
-test('testset isOn, isBefore, isOnOrBefore, isAfter, isOnOrAfter', () => {
-    const d1 = d(1, MONTHS.JANUARY, 2006);
-    const d2 = d(2, MONTHS.JANUARY, 2006);
-
-    assertTrue(isOn(d1, d1));
-    assertFalse(isOn(d1, d2));
-
-    assertTrue(isBefore(d1, d2));
-    assertFalse(isBefore(d1, d1));
-    assertFalse(isBefore(d2, d1));
-
-    assertTrue(isOnOrBefore(d1, d2));
-    assertTrue(isOnOrBefore(d1, d1));
-    assertFalse(isOnOrBefore(d2, d1));
-
-    assertTrue(isAfter(d2, d1));
-    assertFalse(isAfter(d1, d1));
-    assertFalse(isAfter(d1, d2));
-
-    assertTrue(isOnOrAfter(d2, d1));
-    assertTrue(isOnOrAfter(d1, d1));
-    assertFalse(isOnOrAfter(d1, d2));
-})
-
-test('testset isInRange', () => {
-    const left = d(10, MONTHS.JANUARY, 2006);
-    const middle = d(15, MONTHS.JANUARY, 2006);
-    const right = d(20, MONTHS.JANUARY, 2006);
-    const before = d(9, MONTHS.JANUARY, 2006);
-    const after = d(21, MONTHS.JANUARY, 2006);
-    const check = (interval: DateInterval, expected: boolean[]) => {
-        const [onLeft, inMiddle, onRight] = expected;
-        assertEquals(onLeft, isInRange(left, left, right, interval));
-        assertEquals(inMiddle, isInRange(middle, left, right, interval));
-        assertEquals(onRight, isInRange(right, left, right, interval));
-        assertFalse(isInRange(before, left, right, interval));
-        assertFalse(isInRange(after, left, right, interval));
-    }
-    check(DATE_INTERVAL.OPEN, [false, true, false]);
-    check(DATE_INTERVAL.CLOSED_LEFT, [true, true, false]);
-    check(DATE_INTERVAL.CLOSED_RIGHT, [false, true, true]);
-    check(DATE_INTERVAL.CLOSED, [true, true, true]);
-})
-
-test('testset isInRange with swapped bounds and invalid interval', () => {
-    const left = d(10, MONTHS.JANUARY, 2006);
-    const right = d(20, MONTHS.JANUARY, 2006);
-    assertTrue(isInRange(d(15, MONTHS.JANUARY, 2006), right, left, DATE_INTERVAL.OPEN));
-    assertTrue(isInRange(left, right, left, DATE_INTERVAL.CLOSED_LEFT));
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => isInRange(left, left, right, 7)).toThrow();
-})
-
-test('testset isInRange without interval includes both bounds', () => {
-    const left = d(10, MONTHS.JANUARY, 2006);
-    const right = d(20, MONTHS.JANUARY, 2006);
-    assertTrue(isInRange(left, left, right));
-    assertTrue(isInRange(d(15, MONTHS.JANUARY, 2006), right, left));
-    assertTrue(isInRange(right, left, right));
-    assertFalse(isInRange(d(9, MONTHS.JANUARY, 2006), left, right));
-    assertFalse(isInRange(d(21, MONTHS.JANUARY, 2006), left, right));
-})
-
-test('testset getMonths', () => {
-    assertEquals(12, getMonths().length);
-    assertEquals("January", getMonths()[0]);
-    assertEquals("December", getMonths()[11]);
-    assertEquals("January", getMonths(false)[0]);
-    assertEquals("Jan", getMonths(true)[0]);
-    assertEquals("Dec", getMonths(true)[11]);
-})
-
-test('exported name lists cannot change date formatting', () => {
-    for (const names of [days, months]) {
-        // @ts-expect-error exported lists are readonly and frozen at runtime
-        expect(() => names.reverse()).toThrow(TypeError);
-        // @ts-expect-error individual names cannot be overwritten either
-        expect(() => { names[0] = 'Changed'; }).toThrow(TypeError);
-    }
-    expect(weekdayCodeToString(DAYS.MONDAY)).toBe('Monday');
-    expect(monthCodeToString(MONTHS.JANUARY)).toBe('January');
-})
-
-test('testset stringToMonthCode with numbers', () => {
-    for (let month = 1; month <= 12; month++) {
-        assertEquals(month, stringToMonthCode(String(month)));
-    }
-    assertEquals(9, stringToMonthCode(" 9 "));
-    assertEquals(-1, stringToMonthCode("0"));
-    assertEquals(-1, stringToMonthCode("13"));
-    assertEquals(-1, stringToMonthCode("Hello"));
-    assertEquals(MONTHS.JANUARY, stringToMonthCode("January"));
-    assertEquals(MONTHS.JANUARY, stringToMonthCode(" January "));
-    assertEquals(MONTHS.MARCH, stringToMonthCode("Mar"));
-
-    for (const month of Object.values(MONTHS)) {
-        assertEquals(month, stringToMonthCode(monthCodeToString(month)));
-        assertEquals(month, stringToMonthCode(monthCodeToShortString(month)));
-    }
-})
-
-test('testset supported bounds', () => {
-    assertEquals(2, SERIAL_LOWER_BOUND);
-    assertEquals(2958465, SERIAL_UPPER_BOUND);
-    assertEquals(1900, MINIMUM_YEAR_SUPPORTED);
-    assertEquals(9999, MAXIMUM_YEAR_SUPPORTED);
-})
-
-test('testset calcSerial validates its arguments', () => {
-    expect(() => calcSerial(1, MONTHS.JANUARY, 1899)).toThrow();
-    expect(() => calcSerial(1, MONTHS.JANUARY, 10000)).toThrow();
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => calcSerial(1, 0, 2006)).toThrow();
-    // @ts-expect-error invalid code is rejected by the compiler and at runtime
-    expect(() => calcSerial(1, 13, 2006)).toThrow();
-    expect(() => calcSerial(0, MONTHS.JANUARY, 2006)).toThrow();
-    expect(() => calcSerial(32, MONTHS.JANUARY, 2006)).toThrow();
-    expect(() => calcSerial(29, MONTHS.FEBRUARY, 1901)).toThrow();
-    expect(() => calcSerial(31, MONTHS.APRIL, 2006)).toThrow();
-    expect(() => calcSerial(1.5, MONTHS.JANUARY, 2006)).toThrow();
-    assertEquals(SERIAL_LOWER_BOUND, calcSerial(1, MONTHS.JANUARY, 1900));
-    assertEquals(SERIAL_UPPER_BOUND, calcSerial(31, MONTHS.DECEMBER, 9999));
-    assertTrue(calcSerial(29, MONTHS.FEBRUARY, 1904) > 0);
-})
-
-test('testset date arithmetic stays within the supported range', () => {
-    expect(() => addDays(-1, d(1, MONTHS.JANUARY, 1900))).toThrow();
-    expect(() => addDays(1, d(31, MONTHS.DECEMBER, 9999))).toThrow();
-    expect(() => addMonths(1, d(31, MONTHS.DECEMBER, 9999))).toThrow();
-    expect(() => addYears(-1, d(1, MONTHS.JANUARY, 1900))).toThrow();
-    assertEquals(d(31, MONTHS.DECEMBER, 9999), addDays(1, d(30, MONTHS.DECEMBER, 9999)));
+    test('exported name lists cannot change date formatting', () => {
+        for (const names of [days, months]) {
+            // @ts-expect-error exported lists are readonly and frozen at runtime
+            expect(() => names.reverse()).toThrow(TypeError);
+            // @ts-expect-error individual names cannot be overwritten either
+            expect(() => { names[0] = 'Changed'; }).toThrow(TypeError);
+        }
+        expect(weekdayCodeToString(MONDAY)).toBe('Monday');
+        expect(monthCodeToString(JANUARY)).toBe('January');
+    })
 })
