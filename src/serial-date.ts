@@ -41,9 +41,7 @@ const codeToName = (codes: Record<string, number>, c: number, errorMessage: stri
 }
 
 export const days = Object.keys(DAYS)
-export const days2 = days.map(jsUpperCaseFirst) // ['Monday', ....
 export const months = Object.keys(MONTHS)
-export const months2 = months.map(jsUpperCaseFirst) // ['January', ....
 
 export const isValidWeekdayCode = (d: number): d is Weekday => 1 <= d && d <= 7
 export const isValidMonthCode = (m: number): m is Month => 1 <= m && m <= 12

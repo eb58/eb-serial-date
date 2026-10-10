@@ -3,6 +3,10 @@
 Eine kleine TypeScript-Bibliothek für Datumsrechnung mit Tageszahlen, wie sie Tabellenkalkulationen verwenden.
 Der 1. Januar 1900 hat die Nummer 2, der 31. Dezember 9999 die Nummer 2958465.
 
+Die Zählung weicht von Excel nur im Januar und Februar 1900 ab: Excel vergibt dem 1. Januar 1900 die Nummer 1 und kennt
+einen 29. Februar 1900, den es nie gab. Hier ist der 1. Januar die Nummer 2 und der 28. Februar die Nummer 60. Ab dem
+1. März 1900 (Nummer 61) stimmen die Nummern überein.
+
 Sie ist eine Neuumsetzung der Klasse `SerialDate` aus der Bibliothek JCommon (David Gilbert), die Robert C. Martin
 in *Clean Code*, Kapitel 16 „Refactoring SerialDate“ als Fallstudie verwendet.
 
@@ -33,7 +37,7 @@ isBefore(d(1, MONTHS.JANUARY, 1900), ende)              // true
 | Vergleichen | `compare`, `isOn`, `isBefore`, `isOnOrBefore`, `isAfter`, `isOnOrAfter`, `isInRange` |
 | Kalender | `isLeapYear`, `leapYearCount`, `lastDayOfMonth` |
 | Codes und Namen | `isValidWeekdayCode`, `isValidMonthCode`, `isValidWeekInMonthCode`, `stringToWeekdayCode`, `stringToMonthCode`, `weekdayCodeToString`, `monthCodeToString`, `monthCodeToShortString`, `monthCodeToQuarter`, `getMonths`, `weekInMonthToString`, `relativeToString` |
-| Konstanten | `DAYS`, `MONTHS`, `WEEKCODES`, `RELATIVE`, `DATE_INTERVAL`, die Namenslisten `days`, `days2`, `months`, `months2`, `SERIAL_LOWER_BOUND`, `SERIAL_UPPER_BOUND`, `MINIMUM_YEAR_SUPPORTED`, `MAXIMUM_YEAR_SUPPORTED` |
+| Konstanten | `DAYS`, `MONTHS`, `WEEKCODES`, `RELATIVE`, `DATE_INTERVAL`, die Namenslisten `days` und `months`, `SERIAL_LOWER_BOUND`, `SERIAL_UPPER_BOUND`, `MINIMUM_YEAR_SUPPORTED`, `MAXIMUM_YEAR_SUPPORTED` |
 
 Wochentage laufen von `MONDAY = 1` bis `SUNDAY = 7`, Monate von `JANUARY = 1` bis `DECEMBER = 12`.
 `isInRange(datum, d1, d2, intervall)` kennt die Intervalle `OPEN`, `CLOSED_LEFT`, `CLOSED_RIGHT` und `CLOSED`
