@@ -1,5 +1,5 @@
-const { expect } = require("@jest/globals");
-const {
+import {
+    Month,
     DAYS,
     MONTHS,
     WEEKCODES,
@@ -37,6 +37,7 @@ const {
     createInstance,
     RELATIVE,
     DATE_INTERVAL,
+    DateInterval,
     toDate,
     ordinalToString,
     compare,
@@ -51,13 +52,13 @@ const {
     SERIAL_UPPER_BOUND,
     MINIMUM_YEAR_SUPPORTED,
     MAXIMUM_YEAR_SUPPORTED,
-} = require('../src/serial-date')
+} from '../src/serial-date'
 
 const d = calcOrdinal
 
-const assertEquals = (a, b) => expect(a).toBe(b)
-const assertTrue = (a) => expect(a).toBe(true)
-const assertFalse = (a) => expect(a).toBe(false)
+const assertEquals = (a: unknown, b: unknown) => expect(a).toBe(b)
+const assertTrue = (a: unknown) => expect(a).toBe(true)
+const assertFalse = (a: unknown) => expect(a).toBe(false)
 
 
 test('testset isValidWeekdayCode', () => {
@@ -115,6 +116,7 @@ test('testset monthCodeToQuarter', () => {
     assertEquals(monthCodeToQuarter(MONTHS.NOVEMBER), 4);
     assertEquals(monthCodeToQuarter(MONTHS.DECEMBER), 4);
 
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => monthCodeToQuarter(-1)).toThrow();
 })
 
@@ -131,6 +133,7 @@ test('testset monthCodeToString', () => {
     assertEquals("October", monthCodeToString(MONTHS.OCTOBER));
     assertEquals("November", monthCodeToString(MONTHS.NOVEMBER));
     assertEquals("December", monthCodeToString(MONTHS.DECEMBER));
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => monthCodeToString(-1)).toThrow();
 })
 
@@ -148,6 +151,7 @@ test('testset monthCodeToShortString', () => {
     assertEquals("Nov", monthCodeToShortString(MONTHS.NOVEMBER));
     assertEquals("Dec", monthCodeToShortString(MONTHS.DECEMBER));
 
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => monthCodeToShortString(-1)).toThrow();
 })
 
@@ -239,7 +243,7 @@ test('testset addDays', () => {
 
 
 test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth', () => {
-    const check = (day, month, year) => {
+    const check = (day: number, month: Month, year: number) => {
         const ordinal = d(day, month, year);
         assertEquals(year, ordinalToYear(ordinal));
         assertEquals(month, ordinalToMonth(ordinal));
@@ -256,7 +260,8 @@ test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth', () => {
 })
 
 test('testset ordinalToYear, ordinalToMonth, ordinalToDayOfMonth roundtrip', () => {
-    for (let ordinal = 2; ordinal <= 2958465; ordinal += 97) {
+    for (let serial = SERIAL_LOWER_BOUND; serial <= SERIAL_UPPER_BOUND; serial += 97) {
+        const ordinal = createInstance(serial);
         const year = ordinalToYear(ordinal);
         const month = ordinalToMonth(ordinal);
         const day = ordinalToDayOfMonth(ordinal);
@@ -302,6 +307,7 @@ test('testset getPreviousDayOfWeek', () => {
     assertEquals(d(29, MONTHS.FEBRUARY, 2004), getPreviousDayOfWeek(DAYS.SUNDAY, d(3, MONTHS.MARCH, 2004)));
     assertEquals(d(29, MONTHS.DECEMBER, 2004), getPreviousDayOfWeek(DAYS.WEDNESDAY, d(5, MONTHS.JANUARY, 2005)));
 
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => getPreviousDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
 })
 
@@ -309,6 +315,7 @@ test('testset getFollowingDayOfWeek', () => {
     assertEquals(d(1, MONTHS.JANUARY, 2005), getFollowingDayOfWeek(DAYS.SATURDAY, d(26, MONTHS.DECEMBER, 2004)));
     assertEquals(d(3, MONTHS.MARCH, 2004), getFollowingDayOfWeek(DAYS.WEDNESDAY, d(28, MONTHS.FEBRUARY, 2004)));
 
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => getFollowingDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
 })
 
@@ -349,6 +356,7 @@ test('testset getNearestDayOfWeek', () => {
 
     assertEquals(d(22, MONTHS.APRIL, 2006), getNearestDayOfWeek(DAYS.SATURDAY, d(22, MONTHS.APRIL, 2006)));
 
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => getNearestDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
 })
 
@@ -374,6 +382,7 @@ test('testset weekInMonthToString', () => {
     assertEquals("Third", weekInMonthToString(WEEKCODES.THIRD_WEEK_IN_MONTH));
     assertEquals("Fourth", weekInMonthToString(WEEKCODES.FOURTH_WEEK_IN_MONTH));
     assertEquals("Last", weekInMonthToString(WEEKCODES.LAST_WEEK_IN_MONTH));
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => weekInMonthToString(5)).toThrow();
 })
 
@@ -381,6 +390,7 @@ test('testset relativeToString', () => {
     assertEquals("Preceding", relativeToString(RELATIVE.PRECEDING));
     assertEquals("Nearest", relativeToString(RELATIVE.NEAREST));
     assertEquals("Following", relativeToString(RELATIVE.FOLLOWING));
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => relativeToString(2)).toThrow();
 })
 
@@ -454,7 +464,7 @@ test('testset isInRange', () => {
     const right = d(20, MONTHS.JANUARY, 2006);
     const before = d(9, MONTHS.JANUARY, 2006);
     const after = d(21, MONTHS.JANUARY, 2006);
-    const check = (interval, expected) => {
+    const check = (interval: DateInterval, expected: boolean[]) => {
         const [onLeft, inMiddle, onRight] = expected;
         assertEquals(onLeft, isInRange(left, left, right, interval));
         assertEquals(inMiddle, isInRange(middle, left, right, interval));
@@ -473,6 +483,7 @@ test('testset isInRange with swapped bounds and invalid interval', () => {
     const right = d(20, MONTHS.JANUARY, 2006);
     assertTrue(isInRange(d(15, MONTHS.JANUARY, 2006), right, left, DATE_INTERVAL.OPEN));
     assertTrue(isInRange(left, right, left, DATE_INTERVAL.CLOSED_LEFT));
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => isInRange(left, left, right, 7)).toThrow();
 })
 
@@ -514,7 +525,9 @@ test('testset supported bounds', () => {
 test('testset calcOrdinal validates its arguments', () => {
     expect(() => calcOrdinal(1, MONTHS.JANUARY, 1899)).toThrow();
     expect(() => calcOrdinal(1, MONTHS.JANUARY, 10000)).toThrow();
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => calcOrdinal(1, 0, 2006)).toThrow();
+    // @ts-expect-error invalid code is rejected by the compiler and at runtime
     expect(() => calcOrdinal(1, 13, 2006)).toThrow();
     expect(() => calcOrdinal(0, MONTHS.JANUARY, 2006)).toThrow();
     expect(() => calcOrdinal(32, MONTHS.JANUARY, 2006)).toThrow();
