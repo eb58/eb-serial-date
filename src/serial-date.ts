@@ -27,7 +27,7 @@ export const MAXIMUM_YEAR_SUPPORTED = 9999;
 const LAST_DAY_OF_MONTH = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const AGGREGATE_DAYS_TO_END_OF_PRECEDING_MONTH = [0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365];
 
-const jsUpperCaseFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 const mod = (a: number, n: number) => (a % n + n) % n // always >= 0, unlike %
 
 const nameToCode = <T extends Record<string, number>>(codes: T, s: string): T[keyof T] | -1 => {
@@ -76,17 +76,17 @@ export const stringToMonthCode = (s: string): Month | -1 => {
     return isValidMonthCode(n) ? n : -1
 }
 
-export const weekdayCodeToString = (c: Weekday) => jsUpperCaseFirst(days[assertValidWeekdayCode(c) - 1])
-export const monthCodeToString = (c: Month) => jsUpperCaseFirst(months[assertValidMonthCode(c) - 1])
+export const weekdayCodeToString = (c: Weekday) => capitalize(days[assertValidWeekdayCode(c) - 1])
+export const monthCodeToString = (c: Month) => capitalize(months[assertValidMonthCode(c) - 1])
 export const monthCodeToShortString = (c: Month) => monthCodeToString(c).substring(0, 3)
 export const monthCodeToQuarter = (c: Month) => Math.ceil(assertValidMonthCode(c) / 3)
 export const getMonths = (shortened = false) =>
     Object.values(MONTHS).map(c => shortened ? monthCodeToShortString(c) : monthCodeToString(c))
 
 export const weekInMonthToString = (c: WeekInMonth) =>
-    jsUpperCaseFirst(codeToName(WEEKCODES, c, "Invalid week in month code!").replace('_WEEK_IN_MONTH', ''))
+    capitalize(codeToName(WEEKCODES, c, "Invalid week in month code!").replace('_WEEK_IN_MONTH', ''))
 export const relativeToString = (c: Relative) =>
-    jsUpperCaseFirst(codeToName(RELATIVE, c, "Invalid relative code!"))
+    capitalize(codeToName(RELATIVE, c, "Invalid relative code!"))
 
 // no validation, so that the year after the last supported year can be used for searching
 const serialOf = (day: number, month: Month, year: number) => {
@@ -100,7 +100,7 @@ const serialOf = (day: number, month: Month, year: number) => {
 export const calcSerial = (day: number, month: Month, year: number): SerialDate => {
     if (!Number.isInteger(year) || year < MINIMUM_YEAR_SUPPORTED || year > MAXIMUM_YEAR_SUPPORTED)
         throw Error(`The 'year' argument must be in range ${MINIMUM_YEAR_SUPPORTED} to ${MAXIMUM_YEAR_SUPPORTED}.`)
-    if (!Number.isInteger(month) || !isValidMonthCode(month))
+    if (!isValidMonthCode(month))
         throw Error("The 'month' argument must be in the range 1 to 12.")
     if (!Number.isInteger(day) || day < 1 || day > lastDayOfMonth(month, year))
         throw Error("Invalid 'day' argument.")
