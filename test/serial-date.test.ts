@@ -89,6 +89,7 @@ test('testset testStringToWeekdayCode', () => {
     expect(stringToWeekdayCode("Sat")).toBe(DAYS.SATURDAY);
     expect(stringToWeekdayCode("Sunday")).toBe(DAYS.SUNDAY);
     expect(stringToWeekdayCode("Sun")).toBe(DAYS.SUNDAY);
+    expect(stringToWeekdayCode(" Wednesday ")).toBe(DAYS.WEDNESDAY);
 })
 
 test('testset weekdayCodeToString', () => {
@@ -178,6 +179,7 @@ test('testset leapyear', () => {
 })
 
 test('testset leapYearCount', () => {
+    assertEquals(0, leapYearCount(1899));
     assertEquals(0, leapYearCount(1900));
     assertEquals(0, leapYearCount(1901));
     assertEquals(0, leapYearCount(1902));
@@ -188,6 +190,7 @@ test('testset leapYearCount', () => {
     assertEquals(1, leapYearCount(1907));
     assertEquals(2, leapYearCount(1908));
     assertEquals(24, leapYearCount(1999));
+    assertEquals(25, leapYearCount(2000));
     assertEquals(25, leapYearCount(2001));
     assertEquals(49, leapYearCount(2101));
     assertEquals(73, leapYearCount(2201));
@@ -283,6 +286,15 @@ test('testset addMonths', () => {
 
     assertEquals(d(29, MONTHS.FEBRUARY, 1904), addMonths(49, d(31, MONTHS.JANUARY, 1900)));
 
+    assertEquals(d(9, MONTHS.JANUARY, 2002), addMonths(2, d(9, MONTHS.NOVEMBER, 2001)));
+    assertEquals(d(5, MONTHS.DECEMBER, 2003), addMonths(2, d(5, MONTHS.OCTOBER, 2003)));
+    assertEquals(d(1, MONTHS.JANUARY, 2003), addMonths(0, d(1, MONTHS.JANUARY, 2003)));
+
+    const may31 = d(31, MONTHS.MAY, 2004);
+    assertEquals(d(30, MONTHS.JUNE, 2004), addMonths(1, may31));
+    assertEquals(d(31, MONTHS.JULY, 2004), addMonths(2, may31));
+    assertEquals(d(30, MONTHS.JULY, 2004), addMonths(1, addMonths(1, may31)));
+
 })
 
 test('testset addYears', () => {
@@ -360,6 +372,14 @@ test('testset getNearestDayOfWeek', () => {
     expect(() => getNearestDayOfWeek(-1, d(1, MONTHS.JANUARY, 2006))).toThrow();
 })
 
+test('weekday calculations from the original JCommon tests', () => {
+    const november9 = d(9, MONTHS.NOVEMBER, 2001);
+    assertEquals(d(5, MONTHS.NOVEMBER, 2001), getPreviousDayOfWeek(DAYS.MONDAY, november9));
+    assertEquals(d(12, MONTHS.NOVEMBER, 2001), getFollowingDayOfWeek(DAYS.MONDAY, november9));
+    assertEquals(d(12, MONTHS.NOVEMBER, 2001), getNearestDayOfWeek(DAYS.MONDAY, november9));
+    assertEquals(d(19, MONTHS.JANUARY, 1970), getNearestDayOfWeek(DAYS.MONDAY, d(22, MONTHS.JANUARY, 1970)));
+})
+
 test('testset getEndOfCurrentMonth', () => {
     assertEquals(d(31, MONTHS.JANUARY, 2006), getEndOfCurrentMonth(d(1, MONTHS.JANUARY, 2006)));
     assertEquals(d(28, MONTHS.FEBRUARY, 2006), getEndOfCurrentMonth(d(1, MONTHS.FEBRUARY, 2006)));
@@ -412,6 +432,11 @@ test('testset createInstance 2', () => {
 test('testset createInstance 3', () => {
     assertEquals(d(1, MONTHS.JANUARY, 1900), createInstance(new Date(1900, 0, 1)));
     assertEquals(d(1, MONTHS.JANUARY, 2006), createInstance(new Date(2006, 0, 1)));
+})
+
+test('serial date survives a JSON roundtrip', () => {
+    const date = d(15, MONTHS.APRIL, 2000);
+    assertEquals(date, createInstance(JSON.parse(JSON.stringify(date))));
 })
 
 test('testset toDate', () => {
@@ -507,12 +532,21 @@ test('testset getMonths', () => {
 })
 
 test('testset stringToMonthCode with numbers', () => {
-    assertEquals(1, stringToMonthCode("1"));
+    for (let month = 1; month <= 12; month++) {
+        assertEquals(month, stringToMonthCode(String(month)));
+    }
     assertEquals(9, stringToMonthCode(" 9 "));
-    assertEquals(12, stringToMonthCode("12"));
     assertEquals(-1, stringToMonthCode("0"));
     assertEquals(-1, stringToMonthCode("13"));
+    assertEquals(-1, stringToMonthCode("Hello"));
+    assertEquals(MONTHS.JANUARY, stringToMonthCode("January"));
+    assertEquals(MONTHS.JANUARY, stringToMonthCode(" January "));
     assertEquals(MONTHS.MARCH, stringToMonthCode("Mar"));
+
+    for (const month of Object.values(MONTHS)) {
+        assertEquals(month, stringToMonthCode(monthCodeToString(month)));
+        assertEquals(month, stringToMonthCode(monthCodeToShortString(month)));
+    }
 })
 
 test('testset supported bounds', () => {
